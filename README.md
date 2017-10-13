@@ -67,7 +67,7 @@ selector 等には、文字列のコード式／IFunc を実装するもの／�
 * qSelect( selector )
 * qWhere( predicate )
 * qSelectMany( Optional collectionSelector, Optional resultSelector )
-* qGroupByOptional( keySelector, Optional elementSelector, Optional resultSelector )
+* qGroupBy( Optional keySelector, Optional elementSelector, Optional resultSelector )
 * qSkip( count as long )
 * qTake( count as long )
 * qSpan( count as long )
@@ -105,12 +105,12 @@ selector 等には、文字列のコード式／IFunc を実装するもの／�
 
 ## モジュール一覧
 * IFunc
-* Delegate　　　　　　　IFunc インターフェースを実装
-* FuncPointer          IFunc インターフェースを実装
-* Capt                 肥大化ぎみ、あと RegExp 使用すればよかった… 
-* Enumerable           .From() しかメンバがないので、要らないかも
+* Delegate　　　　　　　 IFunc インターフェースを実装
+* FuncPointer　　　　　　IFunc インターフェースを実装
+* Capt　　　　　　　　　 肥大化ぎみ、あと RegExp 使用すればよかった… 
+* Enumerable　　　　　　.From() しかメンバがないので、要らないかも
 * Enumerator
-* EnumOperatorProcs    オペレーターの処理が記述されている
-* Grouping             Collection で代用してもいいかも
-* Ary                  インターフェースに難ありかと
+* EnumOperatorProcs　　オペレーターの処理が記述されている
+* Grouping　　　　　　　Collection で代用してもいいかも
+* Ary　　　　　　　　　　インターフェースに難ありかと
 
