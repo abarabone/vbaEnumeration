@@ -113,4 +113,5 @@ selector 等には、文字列のコード式／IFunc を実装するもの／�
 * EnumOperatorProcs　　オペレーターの処理が記述されている
 * Grouping　　　　　　　Collection で代用してもいいかも
 * Ary　　　　　　　　　　インターフェースに難ありかと
+* xCom　　　　　　　　　ＣＯＭ関連のユーティリティと EnumVariant の実体実装
 
