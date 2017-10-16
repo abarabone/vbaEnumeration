@@ -12,13 +12,6 @@ Option Explicit
 
 
 
-' win API ---------
-
-Private Declare PtrSafe Function VariantCopy Lib "oleaut32" (dst_, src_) As Long
-
-'--------------------
-
-
 
 
 

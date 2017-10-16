@@ -1359,6 +1359,8 @@ End Function
 
 Private Function next_EnumVariant_(ByRef evar_ As EnumVariantStruct, ByVal requestLength_&, ByRef out_item_, ByVal pCFetch_ As LongPtr) As Long
     
+    ' out_item_ は empty なので、オペレータ中での使用は VariantCopy() でよい
+    
     next_EnumVariant_ = 1 + evar_.Operator.xExec02(evar_.Operator, out_item_)
     
 ''    Debug.Print "next "; VarPtr(evar_); evar_.RefCount

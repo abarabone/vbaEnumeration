@@ -72,7 +72,7 @@ Private Declare PtrSafe Sub CoTaskMemFree Lib "Ole32" (ByVal pMem_ As LongPtr)
 
 
 
-' Variant 内部レイアウト
+'自前 EnumVariant 構造体
 
 Private Type EnumVariantStruct
     
@@ -98,9 +98,12 @@ End Type
 
 Private enumerableSource_   As IUnknown     '参照元となる列挙可能な集合。ソース。IEnumVariant を返せるもの（Enumerator 含む）
 
-Private operation_          As Delegate
+Private operation_          As Delegate     ' select や where といったオペレータ処理のデリゲートを格納する。
 
-
+' operation_ デリゲートは処理時にはそのまま使用しない、ひな形である。
+'　For Each 開始時にはその都度 EnumVariant が生成されるが、それに合わせてデリゲートもインスタンスを作成しなければならない。
+'　なぜなら、デリゲートが所持する EnumOperatorProces オブジェクトにも状態の変化する変数 Variable があるからである。
+'　さらに言うなら、そのオブジェクトは Expression デリゲートを所持する場合があるが、そちらは状態を持たない。
 
 
 
@@ -591,9 +594,9 @@ End Function
 ' elementSelector   （省略時は、流れてくる値をそのまま次へ流す）
 '　element : variant =>> element_result : variant
 
-Public Function ToLookUp(Optional keySelector_, Optional elementSelector_) As Dictionary
+Public Function ToLookup(Optional keySelector_, Optional elementSelector_) As Dictionary
     
-    Set ToLookUp = makeGroupDictionary_(Me.NewEnum, toFunc_(keySelector_), toFunc_(elementSelector_))
+    Set ToLookup = makeGroupDictionary_(Me.NewEnum, toFunc_(keySelector_), toFunc_(elementSelector_))
     
 End Function
 

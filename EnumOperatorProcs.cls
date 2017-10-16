@@ -11,6 +11,15 @@ Option Explicit
 
 
 
+'ＬＩＮＱ的オペレータの処理を記述する。
+
+'　また、Enumerator の operation_ デリゲートにオペレータメソッドとともにインスタンスがセットされ、
+'　　オペレータ処理に必要な SourceIterator, Expression, Variable 変数を提供する。
+
+
+
+
+
 
 
 
@@ -41,6 +50,7 @@ Private Const cStdCall& = 4
 
 
 Private Declare PtrSafe Function VariantCopy Lib "oleaut32" (dst_, src_) As Long
+Private Declare PtrSafe Function VariantCopyInd Lib "oleaut32" (dst_, src_) As Long
 
 '--------------------
 
@@ -95,9 +105,9 @@ Public Function SetParams(expressionParam_, variableParam_) As EnumOperatorProcs
     
     Set SetParams = Me
     
-    VariantCopy Expression, expressionParam_
+    VariantCopyInd Expression, expressionParam_
     
-    VariantCopy Variable, variableParam_
+    VariantCopyInd Variable, variableParam_
     
 End Function
 
@@ -144,6 +154,10 @@ Public Function OpIteratorAry(operator_, ByRef out_item_) As Variant
     Dim isRetrieved_ As Boolean
     
     isRetrieved_ = srcAry_.Acquire(index_, out_item_:=out_item_)
+    
+'    out_item_ = srcAry_(index_)
+'
+'    isRetrieved_ = (index_ < srcAry_.Count)
     
     If Not isRetrieved_ Then Exit Function
     
@@ -423,7 +437,7 @@ Public Function OpGroupBy(operator_, ByRef out_item_) As Variant
     
     Dim groups_ As Dictionary
     
-    Set groups_ = Enumerable(SourceIterator).ToLookUp(keySelector_, elmSelector_)
+    Set groups_ = Enumerable(SourceIterator).ToLookup(keySelector_, elmSelector_)
     
     Set Variable(0) = groups_
     
@@ -508,7 +522,7 @@ Public Function OpIterateGroupWithSelector(operator_, ByRef out_innerItem_) As V
             
             Set Variable(2) = innerIterator_
             
-            VariantCopy Variable(1), group_.Key
+            VariantCopyInd Variable(1), group_.Key
             
         End If
         

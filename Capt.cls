@@ -350,7 +350,7 @@ Private Function dividFuncBlocks_(pureCode_$, ByRef out_args_$, ByRef out_capts_
         
         If lineBlock_ Like ">*" Then
             
-            lineBlock_ = "VariantCopy <result>, " & Mid$(lineBlock_, 2)
+            lineBlock_ = "VariantCopyInd <result>, " & Mid$(lineBlock_, 2)
             
         End If
         
@@ -1045,6 +1045,7 @@ Private Function makeDynamicCodeHead_(className_$) As String
     makeDynamicCodeHead_ = _
  _
         "private declare PtrSafe function VariantCopy Lib ""oleaut32"" ( dst_, src_ ) as long" & vbCrLf & _
+        "private declare PtrSafe function VariantCopyInd Lib ""oleaut32"" ( dst_, src_ ) as long" & vbCrLf & _
  _
         "public Captures as variant" & vbCrLf & _
  _

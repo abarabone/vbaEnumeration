@@ -26,9 +26,9 @@ Option Explicit
 
 Private Declare PtrSafe Sub MoveMemory Lib "kernel32" Alias "RtlMoveMemory" (ByRef dst_ As Any, ByRef src_ As Any, ByVal size_&)
 
-Private Declare PtrSafe Function SafeArrayCreate Lib "oleaut32" (ByVal vt_%, ByVal cDims_&, ByRef rgsabound_ As Any) As LongPtr
+Private Declare PtrSafe Function SafeArrayCreate Lib "oleaut32" (ByVal varType_%, ByVal cDims_&, ByRef rgsabound_ As Any) As LongPtr
 
-Private Declare PtrSafe Function SafeArrayCreateVector Lib "oleaut32" (ByVal vt_%, ByVal lLbound_&, ByVal cElements_&) As LongPtr
+Private Declare PtrSafe Function SafeArrayCreateVector Lib "oleaut32" (ByVal varType_%, ByVal lLbound_&, ByVal cElements_&) As LongPtr
 
 Private Declare PtrSafe Function SafeArrayDestroy Lib "oleaut32" (ByRef safeArray_ As Any) As Long
 
@@ -44,14 +44,13 @@ Private Declare PtrSafe Function SafeArrayAccessData Lib "oleaut32" (ByRef safeA
 
 Private Declare PtrSafe Function SafeArrayUnaccessData Lib "oleaut32" (ByRef safeArray_ As Any) As Long
 
-Private Declare PtrSafe Function VariantCopy Lib "oleaut32" (ByRef dst_ As Any, ByRef src_ As Any) As Long
+Private Declare PtrSafe Function VariantCopyInd Lib "oleaut32" (ByRef dst_ As Any, ByRef src_ As Any) As Long
 
 '--------------------
 
 
 
 Const cVarRef& = &H4000
-Const cVarArray& = &H2000
 
 
 
@@ -91,16 +90,36 @@ End Type
 
 
 
+' Variant 内部レイアウト
+
+Private Type VariantStruct
+    varType     As Integer
+    reserve0    As Integer
+    reserve1    As Integer
+    reserve2    As Integer
+    pEntity0    As LongPtr
+    pEntity1    As LongPtr
+End Type
+
+
+
 '変則的 Variant 内部レイアウト
 
 Private Type VariantStructWithCollection
-    vt              As Integer
+    
+    varType         As Integer      '内部型 | vbarray
+    
+    
     reserve0        As Integer
-    serialLength    As Long 'reserve1    As Integer 'reserve2    As Integer
-    '次元を無視した通し個数。Variant の予約部分を使用する。一抹の不安はある笑
+    
+    serialLength    As Long         ' reserve1 As Integer ＋ reserve2 As Integer
+                                    '次元を無視した通し個数。Variant の予約部分を使用する。一抹の不安はある笑
+    
     pEntity0        As LongPtr
-    dimDefs         As Collection 'pEntity1 As LongPtr
-    'メモリ配置としてはオブジェクトはポインターと同等なので、Nothing は cNullPointer と同等
+    
+    dimDefs         As Collection   'pEntity1 As LongPtr
+                                    'メモリ配置としてはオブジェクトはポインターと同等なので、Nothing は cNullPointer と同等
+    
 End Type
 
 
@@ -156,7 +175,7 @@ Public Function Alloc(length_&, Optional varType_ As VbVarType = vbVariant) As A
     Free
     
     
-    arr_.vt = varType_ Or cVarArray
+    arr_.varType = varType_ Or vbArray
     
     arr_.pEntity0 = SafeArrayCreateVector(varType_, 0&, length_)
     
@@ -173,7 +192,7 @@ Public Function AllocBound(baseIndex_&, length_&, Optional varType_ As VbVarType
     Free
     
     
-    arr_.vt = varType_ Or cVarArray
+    arr_.varType = varType_ Or vbArray
     
     arr_.pEntity0 = SafeArrayCreateVector(varType_, baseIndex_, length_)
     
@@ -248,7 +267,7 @@ Public Function DimAlloc(Optional varType_ As VbVarType = vbVariant) As Ary
     
     ' safeArray を確保する。
     
-    arr_.vt = varType_ Or cVarArray
+    arr_.varType = varType_ Or vbArray
     
     arr_.pEntity0 = SafeArrayCreate(varType_, i, safeArrayBounds_(0))
     
@@ -269,7 +288,8 @@ End Function
 ' Variant に格納された動的配列を Ary に移動する。
 '　移動元には Empty が入る。
 
-Public Function MoveFrom(ByRef ref_array_) As Ary
+'Public Function MoveFrom(ByRef ref_array_) As Ary '調整中
+Private Function MoveFrom(ByRef ref_array_) As Ary
     Set MoveFrom = Me
     
     Free
@@ -279,9 +299,9 @@ Public Function MoveFrom(ByRef ref_array_) As Ary
     
     MoveMemory arr_, ref_array_, cSizeOfVariant
     
-    If arr_.vt And cVarRef Then Exit Function '引数の元が Variant 以外で参照になっている場合など　エラー処理すべし
+    If arr_.varType And cVarRef Then Exit Function '引数の元が Variant 以外で参照になっている場合など　エラー処理すべし
     
-    'arr_.serialLength =
+    arr_.serialLength = calcurateSerialLength_(Dimension)
     
     
     '移動元を Empty にし、そちら側で開放されないようにする。
@@ -300,9 +320,23 @@ Public Function CopyFrom(array_) As Ary
     Free
     
     
-    VariantCopy arr_, array_
+    VariantCopyInd arr_, array_
+'    VariantCopy arr_, array_
     
-    'arr_.serialLength =
+    arr_.serialLength = calcurateSerialLength_(Dimension)
+    
+End Function
+
+
+'再帰的に全要素数を求める。
+
+Private Function calcurateSerialLength_(dimension_&) As Long
+    
+    calcurateSerialLength_ = Length(dimension_)
+    
+    If dimension_ = 1 Then Exit Function
+    
+    calcurateSerialLength_ = calcurateSerialLength_ * calcurateSerialLength_(dimension_ - 1)
     
 End Function
 
@@ -357,6 +391,8 @@ End Sub
 
 Public Property Get Length(Optional dimension_&) As Long
     
+'    If IsBlank Then Exit Property 'エラーが出るほうがいいか
+    
     SafeArrayGetUBound ByVal arr_.pEntity0, dimension_ + 1, out_ubound_:=Length
     
     Length = Length + 1
@@ -364,6 +400,8 @@ Public Property Get Length(Optional dimension_&) As Long
 End Property
 
 Public Property Get BaseIndex(Optional dimension_&) As Long
+    
+'    If IsBlank Then Exit Property 'エラーが出るほうがいいか
     
     SafeArrayGetLBound ByVal arr_.pEntity0, dimension_ + 1, out_lbound_:=BaseIndex
     
@@ -373,6 +411,8 @@ End Property
 '次元の数を返す。
 
 Public Property Get Dimension() As Long
+    
+    If IsBlank Then Exit Property
     
     Dimension = SafeArrayGetDim(ByVal arr_.pEntity0)
     
@@ -386,6 +426,17 @@ Public Property Get Count() As Long
     Count = arr_.serialLength
     
 End Property
+
+
+
+'未初期化の配列なら真が帰る。
+
+Public Property Get IsBlank() As Boolean
+    
+    IsBlank = (arr_.pEntity0 = 0)
+    
+End Property
+
 
 
 ' --------------------------------------------------------
@@ -411,7 +462,7 @@ Attribute Item.VB_UserMemId = 0
     
     Dim v_ As VariantStructWithCollection
     
-    v_.vt = arr_.vt Or cVarRef
+    v_.varType = arr_.varType Or cVarRef
     
     v_.pEntity0 = VarPtr(arr_.pEntity0)
     
@@ -428,14 +479,28 @@ End Property
 
 Public Function Acquire(serialIndex_&, ByRef out_item_) As Boolean
     
-    If serialIndex_ >= arr_.serialLength Then out_item_ = Empty: Exit Function
+    If serialIndex_ >= Count Then out_item_ = Empty: Exit Function
     
     
-    Dim pElements_ As LongPtr
+    '配列をロックし、要素のアドレスを取得する。
     
-    SafeArrayAccessData ByVal arr_.pEntity0, out_pvData_:=pElements_
+    Dim pvData_ As LongPtr
     
-    VariantCopy out_item_, ByVal pElements_ + serialIndex_ * SafeArrayGetElemsize(ByVal arr_.pEntity0)
+    SafeArrayAccessData ByVal arr_.pEntity0, out_pvData_:=pvData_
+    
+    
+    '要素をいったん Variant に参照格納し、それを型変換して戻り値にセットする。直接渡せないかな…
+    
+    Dim v_ As VariantStruct
+    
+    v_.varType = arr_.varType And (Not vbArray) Or cVarRef
+    
+    v_.pEntity0 = pvData_ + serialIndex_ * SafeArrayGetElemsize(ByVal arr_.pEntity0)
+    
+    VariantCopyInd out_item_, v_
+    
+    
+    'ロックを解除する。
     
     SafeArrayUnaccessData ByVal arr_.pEntity0
     
