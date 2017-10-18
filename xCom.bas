@@ -1391,7 +1391,7 @@ End Function
 ' EnumVariant を使用する -----------------------------------------
 
 
-'オブジェクトから EnumVariant を取得する。配列はどうしようか…。
+'オブジェクトから EnumVariant を取得する。
  
 Public Function GetEnumVariant(enumerableSourceObject_) As IEnumVARIANT
     

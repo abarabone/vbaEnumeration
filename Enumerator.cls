@@ -127,7 +127,7 @@ Attribute NewEnum.VB_UserMemId = -4
     
     Select Case True
         
-        Case enumerableSource_ Is Nothing, TypeOf enumerableSource_ Is Ary
+        Case TypeOf enumerableSource_ Is Ary
             
             Set NewEnum = xCom.CreateEnumVariant(instantiateOperator_(operation_, enumerableSource_))
             
@@ -234,14 +234,13 @@ End Function
 
 
 
-Public Function qSelect(selector_As_sourceElementIn_to_resultOut_) As Enumerator
-    
+Public Function qSelect(selector_) As Enumerator
     Set qSelect = New Enumerator
     
     
     Dim op_ As New EnumOperatorProcs
     
-    Set op_.Expression = toFunc_(selector_As_sourceElementIn_to_resultOut_)
+    Set op_.Expression = toFunc_(selector_)
     
     
     qSelect.SetOperator Me, Delegate.CNew.SetMethod(op_, "OpSelect")
@@ -251,14 +250,13 @@ End Function
 
 
 
-Public Function qWhere(predicate_As_sourceElementIn_to_isPassOut_) As Enumerator
-    
+Public Function qWhere(predicate_) As Enumerator
     Set qWhere = New Enumerator
     
     
     Dim op_ As New EnumOperatorProcs
     
-    Set op_.Expression = toFunc_(predicate_As_sourceElementIn_to_isPassOut_)
+    Set op_.Expression = toFunc_(predicate_)
     
     
     qWhere.SetOperator Me, Delegate.CNew.SetMethod(op_, "OpWhere")
@@ -269,7 +267,6 @@ End Function
 
 
 Public Function qTake(count_&) As Enumerator
-    
     Set qTake = New Enumerator
     
     
@@ -286,7 +283,6 @@ End Function
 
 
 Public Function qSkip(count_&) As Enumerator
-    
     Set qSkip = New Enumerator
     
     
@@ -303,7 +299,6 @@ End Function
 
 
 Public Function qSpan(count_&) As Enumerator
-    
     Set qSpan = New Enumerator
     
     
@@ -319,29 +314,18 @@ End Function
 
 
 
-Public Function qSelectMany( _
- _
-    Optional collectionSelector_As_sourceElementIn_to_collectionElementsOut_, _
- _
-    Optional resultSelector_As_collectionElementsIn_elementIn_to_resultOut_ _
- _
-) As Enumerator
-    
+Public Function qSelectMany(Optional collectionSelector_, Optional resultSelector_) As Enumerator
     Set qSelectMany = New Enumerator
     
     
     Dim op_ As New EnumOperatorProcs
     
-    op_.Expression = Array( _
-        toFunc_(collectionSelector_As_sourceElementIn_to_collectionElementsOut_), _
-        toFunc_(resultSelector_As_collectionElementsIn_elementIn_to_resultOut_) _
-    )
+    op_.Expression = Array(toFunc_(collectionSelector_), toFunc_(resultSelector_))
     
     
-    Dim innerIterator_  As IEnumVARIANT '内部イテレータ変数の初期化
-    Dim elements_       As Object       '※現状は collectionSelector の結果はオブジェクトのみ、array は受け付けない
+    Dim innerIterator_ As IEnumVARIANT '内部イテレータ変数の初期化
     
-    op_.Variable = Array(innerIterator_, elements_)
+    Set op_.Variable = innerIterator_
     
     
     qSelectMany.SetOperator Me, Delegate.CNew.SetMethod(op_, "OpSelectMany")
@@ -352,33 +336,20 @@ End Function
 
 
 
-Public Function qGroupBy( _
- _
-    Optional keySelector_As_sourceElementIn_to_keyOut_, _
- _
-    Optional elementSelector_As_sourceElementIn_to_groupElementOut_, _
- _
-    Optional resultSelector_As_keyIn_groupElementIn_to_resultOut_ _
- _
-) As Enumerator
-    
+Public Function qGroupBy(Optional keySelector_, Optional elementSelector_, Optional resultSelector_) As Enumerator
     Set qGroupBy = New Enumerator
     
     
     Dim op_ As New EnumOperatorProcs
     
-    op_.Expression = Array( _
-        toFunc_(keySelector_As_sourceElementIn_to_keyOut_), _
-        toFunc_(elementSelector_As_sourceElementIn_to_groupElementOut_), _
-        toFunc_(resultSelector_As_keyIn_groupElementIn_to_resultOut_) _
-    )
+    op_.Expression = Array(toFunc_(keySelector_), toFunc_(elementSelector_), toFunc_(resultSelector_))
     
     
     Dim innerIterator_      As IEnumVARIANT '内部イテレータ変数の初期化
     Dim groupDictionary_    As Dictionary
     Dim key_
     
-    op_.Variable = Array(innerIterator_, groupDictionary_, key_)
+    op_.Variable = Array(groupDictionary_, key_, innerIterator_)
     
     
     qGroupBy.SetOperator Me, Delegate.CNew.SetMethod(op_, "OpGroupBy")
@@ -390,9 +361,9 @@ End Function
 
 
 
-Private Function qFlatAll(Optional resultSelector_) As Enumerator
+Private Function xFlatAll(Optional resultSelector_) As Enumerator
     
-    Set qFlatAll = New Enumerator
+    Set xFlatAll = New Enumerator
     
     Dim innerIterator_ As Enumerator: Set innerIterator_ = Nothing
     
@@ -426,9 +397,7 @@ End Function
 
 Private Function qLot(count_&) As Enumerator
     
-    Dim op_ As New EnumOperatorProcs
     
-    Set op_.Variable = Ary.CNew.Alloc(count_)
     
 End Function
 
@@ -452,75 +421,6 @@ End Function
 
 
 
-'
-
-Private Function qScan(func_, Optional resultSelector_) As Enumerator
-    
-    Set qScan = New Enumerator
-    
-    
-    Dim op_ As New EnumOperatorProcs
-    
-    op_.Expression = Array(toFunc_(func_), toFunc_(resultSelector_))
-    
-    op_.Variable = Empty
-    
-    
-    qScan.SetOperator Me, Delegate.CNew.SetMethod(op_, "OpScan")
-    
-    
-    Dim isRetrieved_ As Boolean
-    
-    isRetrieved_ = xCom.CallNext_EnumVariant(op_.SourceIterator, out_item_:=op_.Variable)
-    
-End Function
-
-Private Function qScanWithSeed(seed_, func_, Optional resultSelector_) As Enumerator
-    
-    Set qScanWithSeed = New Enumerator
-    
-    
-    Dim op_ As New EnumOperatorProcs
-    
-    op_.Expression = Array(toFunc_(func_), toFunc_(resultSelector_))
-    
-    
-    VariantCopy op_.Variable, seed_
-    
-    qScanWithSeed.SetOperator Me, Delegate.CNew.SetMethod(op_, "OpScan")
-    
-End Function
-
-'
-
-Private Function qAggregate(func_, Optional resultSelector_)
-    
-    Set qAggregate = New Enumerator
-    
-    
-    Dim op_ As New EnumOperatorProcs
-    
-    op_.Expression = Array(toFunc_(func_), toFunc_(resultSelector_))
-    
-    op_.Variable = Empty
-    
-    qAggregate.SetOperator Me, Delegate.CNew.SetMethod(op_, "OpAggregate")
-    
-    
-End Function
-
-Private Function qAggregateWithSeed(seed_, func_, Optional resultSelector_)
-    
-    Set qAggregateWithSeed = New Enumerator
-    
-    
-    
-End Function
-
-
-
-
-
 
 
 ' Expression デリゲート設定メソッド - - - - - - - - -
@@ -529,8 +429,8 @@ End Function
 '　オペレータに対応していない式を設定すると、エラーで通知する。
 
 
-Public Function qSetCollectionSelector(collectionSelector_) As Enumerator
-    Set qSetCollectionSelector = Me
+Public Function SetCollectionSelector(collectionSelector_) As Enumerator
+    Set SetCollectionSelector = Me
     
     Dim i&
     Select Case True
@@ -546,8 +446,8 @@ Public Function qSetCollectionSelector(collectionSelector_) As Enumerator
 End Function
 
 
-Public Function qSetResultSelector(resutlSelector_) As Enumerator
-    Set qSetResultSelector = Me
+Public Function SetResultSelector(resutlSelector_) As Enumerator
+    Set SetResultSelector = Me
     
     Dim i&
     Select Case True
@@ -564,8 +464,8 @@ Public Function qSetResultSelector(resutlSelector_) As Enumerator
 End Function
 
 
-Public Function qSetKeySelector(keySelector_) As Enumerator
-    Set qSetKeySelector = Me
+Public Function SetKeySelector(keySelector_) As Enumerator
+    Set SetKeySelector = Me
     
     Dim i&
     Select Case True
@@ -581,8 +481,8 @@ Public Function qSetKeySelector(keySelector_) As Enumerator
 End Function
 
 
-Public Function qSetElementSelector(elementSelector_) As Enumerator
-    Set qSetElementSelector = Me
+Public Function SetElementSelector(elementSelector_) As Enumerator
+    Set SetElementSelector = Me
     
     Dim i&
     Select Case True
@@ -859,7 +759,7 @@ End Function
 
 
 '要素の個数を返す。ソースがカウント可能なら、直接のカウントを返す。
-' predicate_ もあるみたい
+
 Public Property Get Count() As Long
     
     If IsBlank Then Exit Property
@@ -867,7 +767,7 @@ Public Property Get Count() As Long
     
     Select Case True
         
-        Case enumerableSource_ Is Nothing, TypeOf enumerableSource_ Is Enumerator
+        Case TypeOf enumerableSource_ Is Enumerator
             
             Dim i
             For Each i In Me
@@ -888,7 +788,7 @@ End Property
 
 
 '要素の値を合計する。要素が数値以外なら無視する。
-'selector_ もあるみたい
+
 Public Function Sum() As Variant
     
     Dim i
@@ -947,7 +847,7 @@ End Function
 
 Public Property Get IsBlank() As Boolean
     
-    IsBlank = enumerableSource_ Is Nothing And operation_ Is Nothing
+    IsBlank = enumerableSource_ Is Nothing
     
 End Property
 

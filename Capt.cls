@@ -698,14 +698,14 @@ Private Function replaceVariable_(delim_$, str_$, ByRef ref_prevSection_$) As St
     
     replaceVariable_ = Replace(replaceVariable_, "{{", escChar_)
     
-    replaceVariable_ = Replace(replaceVariable_, "{", delim_ & " & (")
+    replaceVariable_ = Replace(replaceVariable_, "{", delim_ & " & ")
     
     replaceVariable_ = Replace(replaceVariable_, escChar_, "{")
     
     
     replaceVariable_ = Replace(replaceVariable_, "}}", escChar_)
     
-    replaceVariable_ = Replace(replaceVariable_, "}", ") & " & delim_)
+    replaceVariable_ = Replace(replaceVariable_, "}", " & " & delim_)
     
     replaceVariable_ = Replace(replaceVariable_, escChar_, "}")
     
