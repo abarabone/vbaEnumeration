@@ -82,7 +82,7 @@ selector 等には、文字列のコード式／IFunc を実装するもの／�
 * ToAry( Optional baseIndex as long )
 * ToCollection
 * ToDictionay( Optional keySelector, Optional elementSelector )
-* ToLookUp( Optional keySelector, Optional elementSelector )
+* ToLookup( Optional keySelector, Optional elementSelector )
 * その他順次追加
 
 ## 疑似ラムダ式について
@@ -97,7 +97,7 @@ selector 等には、文字列のコード式／IFunc を実装するもの／�
 疑似ラムダ式は x => x が通常の構文になりますが、x =&gt;&gt; x とすることで「=&gt;&gt;」は「=&gt;」＋ 行頭の「&gt;」と解釈されます。
 * 引数を必要としない場合は、「x,y =&gt;」の部分ごと省略できます。つまり、Capt("1") も正当な構文と解釈されます。
 * 文字列は「' '」でくくります。$'text{value}text' とすれば変数を埋め込むことができます。
-* 疑似匿名オブジェクトが使用できます。{ x=1, y } 等で匿名 Dictionary、[ x='a', set y=[a,b] ] 等で匿名 Collection が生成されます。
+* 疑似匿名オブジェクトが使用できます。{ x=1, y } 等で匿名 Dictionary、[ x='a', ~~set ~~y=[a,b] ] 等で匿名 Collection が生成されます。
 * 匿名オブジェクトを qGroupBy/ToLookUp のキーとして使用した場合、ＬＩＮＱのようにメンバ内容を元にグループ化されます。
 グループ化は、匿名オブジェクトを文字列化して Dictionary のキーにすることで行っています（匿名入れ子にも対応）。   
 そのため ToLookUp のキーを匿名オブジェクトとした場合には、辞書引きする際に Grouping.ToAyKey(key) 関数を通して文字列化しておく必要があります。
@@ -113,7 +113,7 @@ selector 等には、文字列のコード式／IFunc を実装するもの／�
 ## 列挙可能なオブジェクト
 
 * IEnumVARIANT を返せるオブジェクト（ _NewEnum メソッド／プロパティを持つオブジェクト）
-* Ary オブジェクト（素の Array は現在対象外）~~←ただし、列挙中にデバッグトレースをかけると特定の場所でエクセルが落ちる…~~
+* Ary オブジェクト~~（素の Array は現在対象外）←ただし、列挙中にデバッグトレースをかけると特定の場所でエクセルが落ちる…~~
 * 現在未実装ですが、レコードセットなども対応予定
 
 ## モジュール一覧
@@ -122,10 +122,10 @@ selector 等には、文字列のコード式／IFunc を実装するもの／�
 * Delegate　　　　　　　 IFunc インターフェースを実装
 * FuncPointer　　　　　　IFunc インターフェースを実装　名前は FuncObject とかのほうがいいだろうか
 * Capt　　　　　　　　　 肥大化ぎみ、RegExp の使用を再検討中…orz
-* Enumerable　　　　　　.From() しかメンバがないので、要らないかも？
+* Enumerable　　　　　　 ~~.From() しかメンバがないので、要らないかも？~~
 * Enumerator
-* EnumOperatorProcs　　オペレーターの処理が記述されている
-* Grouping　　　　　　　Collection で代用してもいいかも
+* EnumOperatorProcs　　  オペレーターの処理が記述されている
+* Grouping　　　　　　　 Collection で代用してもいいかも
 * Ary　　　　　　　　　　インターフェースに難ありかと
-* xCom　　　　　　　　　ＣＯＭ関連のユーティリティと EnumVariant の実体実装　（標準モジュール）
+* xCom　　　　　　　　　 ＣＯＭ関連のユーティリティと EnumVariant の実体実装　（標準モジュール）
 

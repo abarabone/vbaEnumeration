@@ -78,57 +78,19 @@ End Function
 
 
 
-'一定範囲の Enumerable( Ary ) を返す
+'一定範囲を列挙するイテレーターを返す
 
 Public Function Range(start_#, count_&, Optional span_# = 1) As Enumerator
     
-    Dim arr_ As New Ary
-'    Dim arr_ As New Collection
+    Set Range = New Enumerator
     
-    arr_.Alloc count_, vbLong
+    Dim op_ As New EnumOperatorProcs
     
-    Dim i&, num_&
-    For num_ = start_ To start_ - 1 + count_ Step span_
-        
-        arr_(i) = num_
-'        arr_.Add num_
-        
-        i = i + 1
-    Next
+    op_.Variable = Array(start_, span_, count_)
     
-    Set Range = Enumerable(arr_)
+    Range.SetIterator Nothing, Delegate.CNew.SetMethod(op_, "OpGeneratorRange")
     
 End Function
-
-
-Private Function Range2(start_#, last_#, Optional freq_&) As Enumerator
-    
-    Dim arr_ As New Ary
-'    Dim arr_ As New Collection
-    
-    
-    Dim range_#:    range_ = last_ - start_
-    
-    Dim span_#:     span_ = range_ / IIf(freq_ > 0, freq_, range_)
-    
-    
-    arr_.Alloc Fix(range_ / span_) + Sgn(range_ / span_), vbDouble
-    
-    Dim i&, num_&
-    For num_ = start_ To last_ Step span_
-        
-        arr_(i) = num_: Debug.Print num_
-'        arr_.Add num_
-        
-        i = i + 1
-    Next
-    
-'    if
-    
-'    Set Range = Enumerable(arr_)
-    
-End Function
-
 
 
 
