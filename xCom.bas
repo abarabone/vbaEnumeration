@@ -23,7 +23,7 @@ Option Explicit
 Private Declare PtrSafe Function DispCallFunc Lib "oleaut32" ( _
     ByVal pvInstance_ As LongPtr, ByVal oVft_ As LongPtr, ByVal cc_ As Long, _
     ByVal vtReturn_ As Integer, _
-    ByVal cActuals_ As Long, valueTypeTop_ As Integer, argPtrTop_ As LongPtr, _
+    ByVal cActuals_ As Long, valueTypeTeop_ As Integer, argPtrTeop_ As LongPtr, _
     pvargResult_ As Variant _
 ) As Long
 
@@ -328,7 +328,7 @@ End Sub
 
 Public Sub CallFunc( _
  _
-    pObj_ As LongPtr, pFunc_ As LongPtr, pArgTop_ As LongPtr, argLength_&, _
+    pObj_ As LongPtr, pFunc_ As LongPtr, pArgTeop_ As LongPtr, argLength_&, _
  _
     Optional ByRef out_result_, Optional isVbaClass_ As Boolean _
  _
@@ -363,7 +363,7 @@ Public Sub CallFunc( _
     Dim i&
     For i = 0 To argLength_ - 1
         
-        pArgs_(i) = pArgTop_ + i * cSizeOfVariant
+        pArgs_(i) = pArgTeop_ + i * cSizeOfVariant
         
     Next
     

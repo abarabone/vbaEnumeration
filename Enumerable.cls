@@ -15,7 +15,7 @@ Option Explicit
 
 
 
-' enumerableSource_ が対象外の場合は、空のソースを所持する Enumerator が返る。
+' enumerableSource_ が列挙対象外の場合は、空のソースを所持する Enumerator が返る。
 
 Public Function From(enumerableSource_) As Enumerator
 Attribute From.VB_UserMemId = 0
@@ -23,6 +23,22 @@ Attribute From.VB_UserMemId = 0
     Select Case True
         
         
+        Case Not IsObject(enumerableSource_) And IsArray(enumerableSource_)
+            
+            ' 配列は値コピーとなってしまう
+            
+            Set From = Enumerable(Ary.CopyFrom(enumerableSource_))
+            
+            
+        
+        Case enumerableSource_ Is Nothing
+            
+            'ブランクを返す。
+            
+            Set From = New Enumerator
+            
+            
+            
         Case TypeOf enumerableSource_ Is Enumerator
             
             '素通し
@@ -55,19 +71,11 @@ Attribute From.VB_UserMemId = 0
             
             
             
-        Case IsArray(enumerableSource_)
-            
-            ' 配列は値コピーとなってしまう
-            
-            Set From = Enumerable(Ary.CopyFrom(enumerableSource_))
-            
-            
-            
         Case Else
             
-            'ブランクを返す。
+            '対応できない場合
             
-            Set From = New Enumerator
+'            Err.Raise 'エラー処理
             
             
     End Select
@@ -84,15 +92,25 @@ Public Function Range(start_#, count_&, Optional span_# = 1) As Enumerator
     
     Set Range = New Enumerator
     
-    Dim op_ As New EnumOperatorProcs
+    Dim eop_ As New EnumOperatorProcs
     
-    op_.Variable = Array(start_, span_, count_)
+    eop_.Variable = Array(start_, span_, count_)
     
-    Range.SetIterator Nothing, Delegate.CNew.SetMethod(op_, "OpGeneratorRange")
+    Range.SetIterator Nothing, Delegate.CNew.SetMethod(eop_, "OpGeneratorRange")
     
 End Function
 
 
+
+
+
+'配列の次元を指定分だけまとめる列挙子を生成する。
+
+Private Function qLot(sourceAry_ As Ary, applyDimensions_&) As Enumerator
+    
+    
+    
+End Function
 
 
 

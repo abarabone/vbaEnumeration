@@ -334,7 +334,7 @@ Private Function calcurateSerialLength_(dimension_&) As Long
     
     calcurateSerialLength_ = Length(dimension_)
     
-    If dimension_ = 1 Then Exit Function
+    If dimension_ <= 1 Then Exit Function
     
     calcurateSerialLength_ = calcurateSerialLength_ * calcurateSerialLength_(dimension_ - 1)
     
@@ -518,6 +518,21 @@ End Function
 
 
 
+' ‘€ì -------------------------------------------------------
+
+
+'“]’u
+
+Private Function Transpose() As Ary
+    Set Transpose = Me
+    
+    
+    
+End Function
+
+
+' ------------------------------------------------------------
+
 
 
 
@@ -527,11 +542,11 @@ Attribute NewEnum.VB_UserMemId = -4
     
 '    Set NewEnum = Enumerable(Me).NewEnum ‚Æ“¯‚¶
     
-    Dim op_ As New EnumOperatorProcs
+    Dim eop_ As New EnumOperatorProcs
     
-    Set op_.SourceIterator = Me
+    Set eop_.SourceIterator = Me
     
-    Set NewEnum = xCom.CreateEnumVariant(Delegate.CNew(op_, "OpIteratorAry"))
+    Set NewEnum = xCom.CreateEnumVariant(Delegate.CNew(eop_, "OpIteratorAry"))
     
 End Function
 
