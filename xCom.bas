@@ -23,7 +23,7 @@ Option Explicit
 Private Declare PtrSafe Function DispCallFunc Lib "oleaut32" ( _
     ByVal pvInstance_ As LongPtr, ByVal oVft_ As LongPtr, ByVal cc_ As Long, _
     ByVal vtReturn_ As Integer, _
-    ByVal cActuals_ As Long, valueTypeTeop_ As Integer, argPtrTeop_ As LongPtr, _
+    ByVal cActuals_ As Long, valueTypeTop_ As Integer, argPtrTop_ As LongPtr, _
     pvargResult_ As Variant _
 ) As Long
 
@@ -140,10 +140,10 @@ End Type
 
 Public Type EnumVariantStruct
     
-    PVtable     As LongPtr
-    Operator    As IFunc
+    PVtable         As LongPtr
+    OperatorFunc    As IFunc
     
-    RefCount    As Long
+    RefCount        As Long
     
 End Type
 
@@ -328,7 +328,7 @@ End Sub
 
 Public Sub CallFunc( _
  _
-    pObj_ As LongPtr, pFunc_ As LongPtr, pArgTeop_ As LongPtr, argLength_&, _
+    pObj_ As LongPtr, pFunc_ As LongPtr, pArgTop_ As LongPtr, argLength_&, _
  _
     Optional ByRef out_result_, Optional isVbaClass_ As Boolean _
  _
@@ -363,7 +363,7 @@ Public Sub CallFunc( _
     Dim i&
     For i = 0 To argLength_ - 1
         
-        pArgs_(i) = pArgTeop_ + i * cSizeOfVariant
+        pArgs_(i) = pArgTop_ + i * cSizeOfVariant
         
     Next
     
@@ -1230,14 +1230,14 @@ End Sub
 ' EnumVariant を生成する -----------------------------------------------
 
 'ここで生成する EnumVariant は、以下の性質を持つ。
-'　・Next で実行する operation_ デリゲートを所持する。
+'　・Next で実行する OperationFunc を所持する。
 '　・CoTaskMemAlloc/Free() で確保／破棄される。
 '　・最低限の機能しかなく、QueryInterface, Clone, Reset, Skip はほぼスタブである。
 
 
 ' EnumVariant を生成する。
 
-Public Function CreateEnumVariant(operation_ As Delegate) As IEnumVARIANT
+Public Function CreateEnumVariant(operationFunc_ As IFunc) As IEnumVARIANT
     
     ' v-table を構築
     
@@ -1250,7 +1250,7 @@ Public Function CreateEnumVariant(operation_ As Delegate) As IEnumVARIANT
     
     Dim pEvar_ As LongPtr
     
-    pEvar_ = createEnumVariant_(VarPtr(vtable_(0)), operation_)
+    pEvar_ = createEnumVariant_(VarPtr(vtable_(0)), operationFunc_)
     
     
     ' IEnumVariant オブジェクトを返す
@@ -1264,7 +1264,7 @@ End Function
 '　ヌルポインタ以外が格納されていれば、参照が破棄された場合等に IUnknown.Release() が走って解放される。
 '　逆に言うと、オブジェクト変数が正しく参照カウントを増減できるように調整すれば、MoveMemory() などで差し替えることもできるということ。
 
-Private Function createEnumVariant_(pVTable_ As LongPtr, operation_ As Delegate) As LongPtr
+Private Function createEnumVariant_(pVTable_ As LongPtr, operationFunc_ As IFunc) As LongPtr
     
     
     ' EnumVariant のメンバを設定する。
@@ -1275,7 +1275,7 @@ Private Function createEnumVariant_(pVTable_ As LongPtr, operation_ As Delegate)
     
     evar_.RefCount = 1
     
-    Set evar_.Operator = operation_
+    Set evar_.OperatorFunc = operationFunc_
     
     
     ' EnumVariant の設定値を確保したヒープメモリにコピーし、IEnumVARIANT の実体を生成する。
@@ -1303,8 +1303,8 @@ End Function
 
 Private Function setVTable_(ByRef vtable_() As LongPtr) As LongPtr
     
-    vtable_(0) = VBA.CLngPtr(AddressOf queryInterface_EnumVariant_)
-    vtable_(1) = VBA.CLngPtr(AddressOf addRef_EnumVariant_)
+    vtable_(0) = VBA.CLngPtr(AddressOf xCom.queryInterface_EnumVariant_)
+    vtable_(1) = VBA.CLngPtr(AddressOf xCom.addRef_EnumVariant_)
     vtable_(2) = VBA.CLngPtr(AddressOf xCom.release_EnumVariant_)
     vtable_(3) = VBA.CLngPtr(AddressOf xCom.next_EnumVariant_)
     vtable_(4) = VBA.CLngPtr(AddressOf xCom.skip_EnumVariant_)
@@ -1348,7 +1348,7 @@ Private Function release_EnumVariant_(ByRef evar_ As EnumVariantStruct) As Long
 ''    Debug.Print "release "; VarPtr(evar_); evar_.RefCount
     If evar_.RefCount = 0 Then
         
-        Set evar_.Operator = Nothing
+        Set evar_.OperatorFunc = Nothing
         
         CoTaskMemFree VarPtr(evar_) '意外にも evar_ 終期化がありそうなのに破棄しても大丈夫みたい
         
@@ -1361,7 +1361,7 @@ Private Function next_EnumVariant_(ByRef evar_ As EnumVariantStruct, ByVal reque
     
     ' out_item_ は empty なので、オペレータ中での使用は VariantCopy() でよい
     
-    next_EnumVariant_ = 1 + evar_.Operator.xExec02(evar_.Operator, out_item_)
+    next_EnumVariant_ = 1 + evar_.OperatorFunc.xExec02(evar_.OperatorFunc, out_item_)
     
 ''    Debug.Print "next "; VarPtr(evar_); evar_.RefCount
 End Function

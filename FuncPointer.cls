@@ -46,7 +46,7 @@ Implements IFunc
 Private Declare PtrSafe Function DispCallFunc Lib "oleaut32" ( _
     ByVal pvInstance_ As LongPtr, ByVal oVft_ As LongPtr, ByVal cc_ As Long, _
     ByVal vtReturn_ As Integer, _
-    ByVal cActuals_ As Long, valueTypeTeop_ As Integer, argPtrTeop_ As LongPtr, _
+    ByVal cActuals_ As Long, valueTypeTop_ As Integer, argPtrTop_ As LongPtr, _
     pvargResult_ As Variant _
 ) As Long
 
@@ -159,8 +159,8 @@ Private Function IFunc_Exec(ParamArray args_()) As Variant
     
     
     Dim pSafeArray_ As LongPtr:     pSafeArray_ = Not Not args_
-'    Dim pArgTeop_ As LongPtr:        SafeArrayAccessData ByVal pSafeArray_, pArgTeop_
-'   Dim pArgTeop_ As LongPtr:        pArgTeop_ = xCom.GetAddressOfSafeArray(Not Not args_)
+'    Dim pArgTop_ As LongPtr:        SafeArrayAccessData ByVal pSafeArray_, pArgTop_
+'   Dim pArgTop_ As LongPtr:        pArgTop_ = xCom.GetAddressOfSafeArray(Not Not args_)
     
     Static types_%(16 - 1)
     Static pArgs_(16 - 1) As LongPtr
@@ -173,7 +173,7 @@ Private Function IFunc_Exec(ParamArray args_()) As Variant
         
         types_(i) = vbVariant Or &H4000
         
-'        pArgs_(i) = pArgTeop_ + i * cSizeOfVariant
+'        pArgs_(i) = pArgTop_ + i * cSizeOfVariant
         
     Next
     

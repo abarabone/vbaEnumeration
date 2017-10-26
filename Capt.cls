@@ -1162,7 +1162,7 @@ Private Function scanSyntax_Block_(srcTxt_$, manipurations_ As Collection, resul
         
         scanSyntax_Block_ = scanSyntax_Block_inner_(scanSyntax_Block_, 1, manipurations_, results_)
         
-        man_peop_ manipurations_
+        man_pop_ manipurations_
     Loop
     
 End Function
@@ -1215,7 +1215,7 @@ Private Function scanSyntax_Block_inner_(srcTxt_$, ipos_&, manipurations_ As Col
     
     'ブロック内部のテキストに対し、操作処理関数スタックに存在する manipuration_ を処理する。もっとシンプルにできないかね…。
     
-    man_peop_ manipurations_
+    man_pop_ manipurations_
     
     If manipurations_.Count > 1 Then txtM_ = scanSyntax_Block_inner_(txtM_, 1, manipurations_, results_)
     
@@ -1242,7 +1242,7 @@ Private Sub man_peek_(manipurations_ As Collection, ByRef out_tagL_$, ByRef out_
     
 End Sub
 
-Private Sub man_peop_(manipurations_ As Collection)
+Private Sub man_pop_(manipurations_ As Collection)
     
     manipurations_.Remove 1
     manipurations_.Remove 1
@@ -1358,14 +1358,14 @@ Private Function makeInstantiateFunctionString_(ByRef ref_funcName_$, propertyLi
     Dim params_ As New Collection   '引数リスト
     Dim values_ As New Collection   '値リスト
     
-    Dim preop_ '$
-    For Each preop_ In props_
+    Dim prop_ '$
+    For Each prop_ In props_
         
-        preop_ = Trim$(preop_)
+        prop_ = Trim$(prop_)
         
-        If preop_ <> "" Then
+        If prop_ <> "" Then
             
-            Dim nameAndValue_$(): nameAndValue_ = Split(preop_, "=", 2)
+            Dim nameAndValue_$(): nameAndValue_ = Split(prop_, "=", 2)
             
             Dim key_$:      key_ = Trim(nameAndValue_(0))
             Dim value_$:    value_ = nameAndValue_(UBound(nameAndValue_))

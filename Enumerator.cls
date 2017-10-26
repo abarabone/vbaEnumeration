@@ -44,7 +44,7 @@ Option Explicit
 Private Declare PtrSafe Function DispCallFunc Lib "oleaut32" ( _
     ByVal pvInstance_ As LongPtr, ByVal oVft_ As LongPtr, ByVal cc_ As Long, _
     ByVal vtReturn_ As Integer, _
-    ByVal cActuals_ As Long, valueTypeTeop_ As Integer, argPtrTeop_ As LongPtr, _
+    ByVal cActuals_ As Long, valueTypeTop_ As Integer, argPtrTop_ As LongPtr, _
     pvargResult_ As Variant _
 ) As Long
 
@@ -77,10 +77,10 @@ Private Declare PtrSafe Sub CoTaskMemFree Lib "Ole32" (ByVal pMem_ As LongPtr)
 
 Private Type EnumVariantStruct
     
-    PVtable     As LongPtr
-    Operator    As IFunc
+    PVtable         As LongPtr
+    OperatorFunc    As IFunc
     
-    RefCount    As Long
+    RefCount        As Long
     
 End Type
 
@@ -99,9 +99,9 @@ End Type
 
 Private enumerableSource_   As IUnknown     '参照元となる列挙可能な集合。ソース。IEnumVariant を返せるもの（Enumerator 含む）
 
-Private operation_          As Delegate     ' select や where といったオペレータ処理のデリゲートを格納する。
+Private operationDelegate_  As Delegate     ' select や where といったオペレータ処理のデリゲートを格納する。
 
-' operation_ デリゲートは処理時にはそのまま使用しない、ひな形である。
+' operationDelegate_ デリゲートは処理時にはそのまま使用しない、ひな形である。
 '　For Each 開始時にはその都度 EnumVariant が生成されるが、それに合わせてデリゲートもインスタンスを作成しなければならない。
 '　なぜなら、デリゲートが所持する EnumOperatorProces オブジェクトにも状態の変化する変数 Variable があるからである。
 '　さらに言うなら、そのオブジェクトは Expression デリゲートを所持する場合があるが、そちらは状態を持たない。
@@ -133,12 +133,12 @@ Attribute NewEnum.VB_UserMemId = -4
         
         Case enumerableSource_ Is Nothing, TypeOf enumerableSource_ Is Ary
             
-            Set NewEnum = xCom.CreateEnumVariant(instantiateOperator_(operation_, enumerableSource_))
+            Set NewEnum = xCom.CreateEnumVariant(instantiateOperator_(operationDelegate_, enumerableSource_))
             
             
         Case TypeOf enumerableSource_ Is Enumerator
             
-            Set NewEnum = xCom.CreateEnumVariant(instantiateOperator_(operation_, asObject_(enumerableSource_).NewEnum))
+            Set NewEnum = xCom.CreateEnumVariant(instantiateOperator_(operationDelegate_, asObject_(enumerableSource_).NewEnum))
             
             
         Case TypeOf enumerableSource_ Is Object
@@ -185,7 +185,7 @@ Public Function SetIterator(enumerableSourceObject_ As Object, operationFunction
     
     Set enumerableSource_ = enumerableSourceObject_
     
-    Set operation_ = operationFunction_
+    Set operationDelegate_ = operationFunction_
     
 End Function
 
@@ -198,7 +198,7 @@ Public Function SetOperator(sourceEnumerator_ As Enumerator, operationFunction_ 
     
     Set enumerableSource_ = sourceEnumerator_
     
-    Set operation_ = operationFunction_
+    Set operationDelegate_ = operationFunction_
     
 End Function
 
@@ -245,15 +245,9 @@ Public Function qSelect(selector_As_sourceIn_to_resultOut_) As Enumerator
 '    If selector_ Is Nothing Then err.Raise'エラー処理
     
     
-    
-    Dim eop_ As New EnumOperatorProcs
-    
-    Set eop_.Expression = selector_
-    
-    
     Set qSelect = New Enumerator
     
-    qSelect.SetOperator Me, Delegate.CNew.SetMethod(eop_, "OpSelect")
+    qSelect.SetOperator Me, createSimpleExpressionOperatorDelegate_("OpSelect", selector_)
     
 End Function
 
@@ -267,17 +261,26 @@ Public Function qWhere(predicate_As_sourceIn_to_isPassedOut_) As Enumerator
 '    If predicate_ Is Nothing Then err.Raise'エラー処理
     
     
+    Set qWhere = New Enumerator
+    
+    qWhere.SetOperator Me, createSimpleExpressionOperatorDelegate_("OpWhere", predicate_)
+    
+End Function
+
+
+
+Private Function createSimpleExpressionOperatorDelegate_(operatorName_$, expression_ As IFunc) As Delegate
+    
     
     Dim eop_ As New EnumOperatorProcs
     
-    Set eop_.Expression = predicate_
+    Set eop_.Expression = expression_
     
     
-    Set qWhere = New Enumerator
-    
-    qWhere.SetOperator Me, Delegate.CNew.SetMethod(eop_, "OpWhere")
+    Set createSimpleExpressionOperatorDelegate_ = Delegate.CNew(eop_, operatorName_)
     
 End Function
+
 
 
 
@@ -287,15 +290,9 @@ Public Function qTake(count_&) As Enumerator
 '    if count_ < 0 then err.Raise 'エラー
     
     
-    
-    Dim eop_ As New EnumOperatorProcs
-    
-    eop_.Variable = count_
-    
-    
     Set qTake = New Enumerator
     
-    qTake.SetOperator Me, Delegate.CNew.SetMethod(eop_, "OpTake")
+    qTake.SetOperator Me, createCountOperatorDelegate_("OpTake", count_)
     
 End Function
 
@@ -307,15 +304,9 @@ Public Function qSkip(count_&) As Enumerator
 '    if count_ < 0 then err.Raise 'エラー
     
     
-    
-    Dim eop_ As New EnumOperatorProcs
-    
-    eop_.Variable = count_
-    
-    
     Set qSkip = New Enumerator
     
-    qSkip.SetOperator Me, Delegate.CNew.SetMethod(eop_, "OpSkip")
+    qSkip.SetOperator Me, createCountOperatorDelegate_("OpSkip", count_)
     
 End Function
 
@@ -327,17 +318,30 @@ Public Function qSpan(count_&) As Enumerator
 '    if count_ < 0 then err.Raise 'エラー
     
     
+    Set qSpan = New Enumerator
+    
+    qSpan.SetOperator Me, createCountOperatorDelegate_("OpSpan", count_)
+    
+End Function
+
+
+
+Private Function createCountOperatorDelegate_(operatorName_$, count_&) As Delegate
+    
     
     Dim eop_ As New EnumOperatorProcs
     
     eop_.Variable = count_
     
     
-    Set qSpan = New Enumerator
-    
-    qSpan.SetOperator Me, Delegate.CNew.SetMethod(eop_, "OpSpan")
+    Set createCountOperatorDelegate_ = Delegate.CNew(eop_, operatorName_)
     
 End Function
+
+
+
+
+
 
 
 
@@ -355,10 +359,19 @@ Public Function qSelectMany( _
     Dim resSelector_ As IFunc:  Set resSelector_ = toFunc_(resultSelector_As_collectionIn_elementIn_to_resultOut_)
     
     
+    Set qSelectMany = New Enumerator
+    
+    qSelectMany.SetOperator Me, createSelectManyOperatorDelegate_("OpSelectMany", colSelector_, resSelector_)
+    
+End Function
+
+
+Private Function createSelectManyOperatorDelegate_(operatorName_$, collectionSelector_ As IFunc, resultSelector_ As IFunc) As Delegate
+    
     
     Dim eop_ As New EnumOperatorProcs
     
-    eop_.Expression = Array(colSelector_, resSelector_)
+    eop_.Expression = Array(collectionSelector_, resultSelector_)
     
     Dim innerIterator_  As IEnumVARIANT '内部イテレータ変数の初期化
     Dim elements_       As Object       '※現状は collectionSelector の結果はオブジェクトのみ、array は受け付けない
@@ -366,11 +379,11 @@ Public Function qSelectMany( _
     eop_.Variable = Array(innerIterator_, elements_)
     
     
-    Set qSelectMany = New Enumerator
-    
-    qSelectMany.SetOperator Me, Delegate.CNew.SetMethod(eop_, "OpSelectMany")
+    Set createSelectManyOperatorDelegate_ = Delegate.CNew.SetMethod(eop_, operatorName_)
     
 End Function
+
+
 
 
 
@@ -393,10 +406,18 @@ Public Function qGroupBy( _
     Dim resSelector_ As IFunc:  Set resSelector_ = toFunc_(resultSelector_As_keyIn_groupElementIn_to_resultOut_)
     
     
+    Set qGroupBy = New Enumerator
+    
+    qGroupBy.SetOperator Me, setGroupOperatorDelegate_("OpGroupBy", keySelector_, elmSelector_, resSelector_)
+    
+End Function
+
+Private Function setGroupOperatorDelegate_(operatorName_$, keySelector_ As IFunc, elementSelector_ As IFunc, resultSelector_ As IFunc) As Delegate
+    
     
     Dim eop_ As New EnumOperatorProcs
     
-    eop_.Expression = Array(keySelector_, elmSelector_, resSelector_)
+    eop_.Expression = Array(keySelector_, elementSelector_, resultSelector_)
     
     Dim innerIterator_      As IEnumVARIANT '内部イテレータ変数の初期化
     Dim groupDictionary_    As Dictionary
@@ -405,13 +426,9 @@ Public Function qGroupBy( _
     eop_.Variable = Array(innerIterator_, groupDictionary_, key_)
     
     
-    Set qGroupBy = New Enumerator
-    
-    qGroupBy.SetOperator Me, Delegate.CNew.SetMethod(eop_, "OpGroupBy")
+    Set setGroupOperatorDelegate_ = Delegate.CNew(eop_, operatorName_)
     
 End Function
-
-
 
 
 
@@ -489,20 +506,9 @@ Public Function qScan(func_As_accumulateIn_sourceIn_to_accumulateOut_, Optional 
     Dim resSelector_    As IFunc:   Set resSelector_ = toFunc_(resultSelector_As_accumulateIn_to_resultOut_)
     
     
-    
-    Dim eop_ As New EnumOperatorProcs
-    
-    eop_.Expression = Array(accFunc_, resSelector_)
-    
-    Dim seed_
-    
-    eop_.Variable = seed_
-    
-    
     Set qScan = New Enumerator
     
-    qScan.SetOperator Me, Delegate.CNew.SetMethod(eop_, "OpScanFirstStep")
-    
+    qScan.SetOperator Me, createScanOperatorDelegate_("OpScanFirstStep", accFunc_, resSelector_, Empty)
     
 End Function
 
@@ -516,20 +522,26 @@ Public Function qScanWithSeed(seed_, func_As_accumulateIn_sourceIn_to_accumulate
     Dim resSelector_    As IFunc:   Set resSelector_ = toFunc_(resultSelector_As_accumulateIn_to_resultOut_)
     
     
+    Set qScanWithSeed = New Enumerator
+    
+    qScanWithSeed.SetOperator Me, createScanOperatorDelegate_("OpScanFirstStep2", accFunc_, resSelector_, seed_)
+    
+End Function
+
+
+
+Private Function createScanOperatorDelegate_(operatorName_$, accFunc_ As IFunc, resultSelector_ As IFunc, seed_) As Delegate
     
     Dim eop_ As New EnumOperatorProcs
     
-    eop_.Expression = Array(accFunc_, resSelector_)
+    eop_.Expression = Array(accFunc_, resultSelector_)
     
     If IsObject(seed_) _
         Then Set eop_.Variable = seed_ _
         Else eop_.Variable = seed_
     
     
-    Set qScanWithSeed = New Enumerator
-    
-    qScanWithSeed.SetOperator Me, Delegate.CNew.SetMethod(eop_, "OpScanFirstStep2")
-    
+    Set createScanOperatorDelegate_ = Delegate.CNew(eop_, operatorName_)
     
 End Function
 
@@ -537,15 +549,24 @@ End Function
 
 
 
+'比較関数 comparer が真を返した場合の source を次に流す。
 
-
-Public Function qRetrieveWhen(comparer_As_prevSourceIn_thisSourceIn_to_isEstablishedOut_, Optional selector_As_sourceIn_to_preConversionOut_) As Enumerator
+Public Function qLetIf(comparer_As_prevSourceIn_thisSourceIn_to_isEstablishedOut_, Optional selector_As_sourceIn_to_preConversionOut_) As Enumerator
     
     Dim comparer_ As IFunc:     Set comparer_ = toFunc_(comparer_As_prevSourceIn_thisSourceIn_to_isEstablishedOut_)
     
 '    if comparer_ is nothing then err.Raise 'エラー処理
     
     Dim selector_ As IFunc:     Set selector_ = toFunc_(selector_As_sourceIn_to_preConversionOut_)
+    
+    
+    Set qLetIf = New Enumerator
+    
+    qLetIf.SetOperator Me, createLetIfOperatorDelegate_("OpLetIf", comparer_, selector_)
+    
+End Function
+
+Private Function createLetIfOperatorDelegate_(operatorName_$, comparer_ As IFunc, selector_ As IFunc) As Delegate
     
     
     Dim eop_ As New EnumOperatorProcs
@@ -557,13 +578,9 @@ Public Function qRetrieveWhen(comparer_As_prevSourceIn_thisSourceIn_to_isEstabli
     eop_.Variable = prevElement_
     
     
-    Set qRetrieveWhen = New Enumerator
-    
-    qRetrieveWhen.SetOperator Me, Delegate.CNew.SetMethod(eop_, "OpDistinctUntil")
+    Set createLetIfOperatorDelegate_ = Delegate.CNew(eop_, operatorName_)
     
 End Function
-
-
 
 
 
@@ -577,7 +594,7 @@ Public Function qConcat(secondEnumerableSource_ As Object) As Enumerator
     
     Set qConcat = New Enumerator
     
-    qConcat.SetOperator Me, makeUnionOperationDelegate_(secondEnumerableSource_, "OpUnionAll")
+    qConcat.SetOperator Me, createUnionOperatorDelegate_("OpUnionAll", secondEnumerableSource_)
     
 End Function
 
@@ -588,7 +605,7 @@ Public Function qUnion(secondEnumerableSource_ As Object) As Enumerator
     
     Set qUnion = New Enumerator
     
-    qUnion.SetOperator Me, makeUnionOperationDelegate_(secondEnumerableSource_, "OpUnion")
+    qUnion.SetOperator Me, createUnionOperatorDelegate_("OpUnion", secondEnumerableSource_)
     
 End Function
 
@@ -596,12 +613,13 @@ Public Function qDistinct() As Enumerator
     
     Set qDistinct = New Enumerator
     
-    qDistinct.SetOperator Me, makeUnionOperationDelegate_(Nothing, "OpUnion")
+    qDistinct.SetOperator Me, createUnionOperatorDelegate_("OpUnion", Nothing)
     
 End Function
 
 
-Private Function makeUnionOperationDelegate_(secondEnumerableSource_ As Object, operationName_$) As Delegate
+Private Function createUnionOperatorDelegate_(operatorName_$, secondEnumerableSource_ As Object) As Delegate
+    
     
     Dim eop_ As New EnumOperatorProcs
     
@@ -611,7 +629,8 @@ Private Function makeUnionOperationDelegate_(secondEnumerableSource_ As Object, 
     
     eop_.Variable = Array(iterator_, nextSource_, distincts_)
     
-    Set makeUnionOperationDelegate_ = Delegate.CNew.SetMethod(eop_, operationName_)
+    
+    Set createUnionOperatorDelegate_ = Delegate.CNew(eop_, operatorName_)
     
 End Function
 
@@ -628,10 +647,19 @@ Public Function qZip(secondEnumerableSource_ As Object, Optional resultSelector_
     Dim resSelector_    As IFunc:   Set resSelector_ = toFunc_(resultSelector_As_firstIn_secondIn_to_resultOut_)
     
     
+    Set qZip = New Enumerator
+    
+    qZip.SetOperator Me, createZipOperatorDelegate_("OpZip", resSelector_, secondEnumerableSource_)
+    
+End Function
+
+
+Private Function createZipOperatorDelegate_(operatorName_$, resultSelector_ As IFunc, secondEnumerableSource_ As Object) As Delegate
+
     
     Dim eop_ As New EnumOperatorProcs
     
-    Set eop_.Expression = resSelector_
+    Set eop_.Expression = resultSelector_
     
     Dim iterator_       As IEnumVARIANT     ' secondSource_ と同じ領域を使用してもよいが、まぁわかりやすく別に。
     Dim secondSource_   As Object:          Set secondSource_ = secondEnumerableSource_
@@ -639,11 +667,14 @@ Public Function qZip(secondEnumerableSource_ As Object, Optional resultSelector_
     eop_.Variable = Array(iterator_, secondSource_)
     
     
-    Set qZip = New Enumerator
-    
-    qZip.SetOperator Me, Delegate.CNew.SetMethod(eop_, "OpZip")
+    Set createZipOperatorDelegate_ = Delegate.CNew(eop_, operatorName_)
     
 End Function
+
+
+
+
+
 
 
 
@@ -666,13 +697,13 @@ Public Function qSetCollectionSelector(collectionSelector_) As Enumerator
     Dim i&
     Select Case True
         
-        Case operation_.HasMethod("OpSelectMany"):  i = 0
+        Case operationDelegate_.HasMethod("OpSelectMany"):  i = 0
          
         Case Else: Exit Function '対応していないエラー
     
     End Select
     
-    operation_.Target.SetExpression selector_, i
+    operationDelegate_.Target.SetExpression selector_, i
     
 End Function
 
@@ -688,14 +719,14 @@ Public Function qSetResultSelector(resutlSelector_) As Enumerator
     Dim i&
     Select Case True
         
-        Case operation_.HasMethod("OpSelectMany"):  i = 1
-        Case operation_.HasMethod("OpGroupBy"):     i = 2
+        Case operationDelegate_.HasMethod("OpSelectMany"):  i = 1
+        Case operationDelegate_.HasMethod("OpGroupBy"):     i = 2
          
         Case Else: Exit Function '対応していないエラー
     
     End Select
     
-    operation_.Target.SetExpression selector_, i
+    operationDelegate_.Target.SetExpression selector_, i
     
 End Function
 
@@ -711,13 +742,13 @@ Public Function qSetKeySelector(keySelector_) As Enumerator
     Dim i&
     Select Case True
         
-        Case operation_.HasMethod("OpGroupBy"):  i = 0
+        Case operationDelegate_.HasMethod("OpGroupBy"):  i = 0
          
         Case Else: Exit Function '対応していないエラー
     
     End Select
     
-    operation_.Target.SetExpression selector_, i
+    operationDelegate_.Target.SetExpression selector_, i
     
 End Function
 
@@ -733,13 +764,13 @@ Public Function qSetElementSelector(elementSelector_) As Enumerator
     Dim i&
     Select Case True
         
-        Case operation_.HasMethod("OpGroupBy"):  i = 1
+        Case operationDelegate_.HasMethod("OpGroupBy"):  i = 1
          
         Case Else: Exit Function '対応していないエラー
         
     End Select
     
-    operation_.Target.SetExpression selector_, i
+    operationDelegate_.Target.SetExpression selector_, i
     
 End Function
 
@@ -821,11 +852,17 @@ End Function
 
 
 
+
+
+
 Private Function ToJaggedArray() As Variant
     
     
     
 End Function
+
+
+
 
 
 
@@ -848,87 +885,7 @@ Public Function ToLookup(Optional keySelector_As_sourceIn_to_keyOut_, Optional e
     Dim elmSelector_ As IFunc:  Set elmSelector_ = toFunc_(elementSelector_As_sourceIn_to_groupElementOut_)
     
     
-    Set ToLookup = makeGroupDictionary_(Me.NewEnum, keySelector_, elmSelector_)
-    
-End Function
-
-
-Private Function makeGroupDictionary_(iterator_ As IEnumVARIANT, keySelector_ As IFunc, elmSelector_ As IFunc) As Dictionary
-    
-    Dim groups_ As New Dictionary
-    
-    
-    Dim item_
-    
-    Do While xCom.CallNext_EnumVariant(iterator_, out_item_:=item_)
-        
-        
-        Dim key_
-        
-        If keySelector_ Is Nothing _
-            Then VariantCopy key_, item_ _
-            Else VariantCopy key_, keySelector_.xExec01(item_)
-        
-        
-        Dim element_
-        
-        If elmSelector_ Is Nothing _
-            Then VariantCopy element_, item_ _
-            Else VariantCopy element_, elmSelector_.xExec01(item_)
-        
-        
-        
-        'キーが匿名オブジェクトなら、全要素を文字列化してシリアライズする。
-        '　匿名オブジェクトは、
-        
-        Dim stringKey_$
-        
-        stringKey_ = Grouping.SeriarizeIfAnonymous(key_)
-        
-        
-        
-        '要素をグループコレクションに追加する。
-        
-        getGrouping_(groups_, key_, stringKey_).Elements.Add element_
-        
-        
-    Loop
-    
-    
-    Set makeGroupDictionary_ = groups_
-    
-End Function
-
-
-'要素をグループコレクションに追加する｡
-'　辞書から Grouping を取り出す。登録されていなければ新規 Grouping を登録する。
-
-Private Function getGrouping_(groups_ As Dictionary, key_, stringKey_$) As Grouping
-    
-    
-    ' key_ が辞書に登録されていればそれを返す。
-    
-    On Error Resume Next
-    
-    If stringKey_ = "" _
-        Then Set getGrouping_ = groups_(key_) _
-        Else Set getGrouping_ = groups_(stringKey_)
-    
-    If Not getGrouping_ Is Nothing Then Exit Function
-    
-    
-    '登録されていなければ新規作成、登録、そして返す。
-    
-    Set getGrouping_ = New Grouping
-    
-    If IsObject(key_) _
-        Then Set getGrouping_.Key = key_ _
-        Else getGrouping_.Key = key_
-    
-    
-    If stringKey_ = "" _
-        Then Set groups_(key_) = getGrouping_ _
-        Else Set groups_(stringKey_) = getGrouping_
+    Set ToLookup = makeEnumrationDictionary_(Me.NewEnum, keySelector_, elmSelector_, Delegate.CNew(EnumOperatorProcs, "RegistGroupDictionary"))
     
 End Function
 
@@ -953,14 +910,20 @@ Public Function ToDictionary(Optional keySelector_As_sourceIn_to_keyOut_, Option
     Dim elmSelector_ As IFunc:  Set elmSelector_ = toFunc_(elementSelector_As_sourceIn_to_groupElementOut_)
     
     
-    Set ToDictionary = makeDictionary_(Me.NewEnum, keySelector_, elmSelector_)
+    Set ToDictionary = makeEnumrationDictionary_(Me.NewEnum, keySelector_, elmSelector_, Delegate.CNew(EnumOperatorProcs, "RegistDictionary"))
     
 End Function
 
 
-Private Function makeDictionary_(iterator_ As IEnumVARIANT, keySelector_ As IFunc, elmSelector_ As IFunc) As Dictionary
+
+
+
+
+Private Function makeEnumrationDictionary_ _
+(iterator_ As IEnumVARIANT, keySelector_ As IFunc, elmSelector_ As IFunc, registFunc_ As IFunc) As Dictionary
     
     Dim dict_ As New Dictionary
+    
     
     
     Dim item_
@@ -983,20 +946,16 @@ Private Function makeDictionary_(iterator_ As IEnumVARIANT, keySelector_ As IFun
         
         
         
-        '要素を辞書に追加する。
-        'キーが匿名オブジェクトなら、全要素を文字列化してシリアライズする。
-        
-        dict_.Add Grouping.ToAyKey(key_), element_
+        registFunc_.xExec03 dict_, key_, element_
         
         
     Loop
     
     
-    Set makeDictionary_ = dict_
+    
+    Set makeEnumrationDictionary_ = dict_
     
 End Function
-
-
 
 
 
@@ -1027,19 +986,26 @@ Public Property Get Count(Optional predicate_As_sourceIn_to_isPassedOut_) As Lon
     If IsBlank Then Exit Property
     
     
+    Dim i
     Select Case True
         
-        Case Not predicate_ Is Nothing, enumerableSource_ Is Nothing, TypeOf enumerableSource_ Is Enumerator
+        Case predicate_ Is Nothing And HasCountableSource
             
-            Dim i
+            Count = asObject_(enumerableSource_).Count
+            
+            
+        Case Not predicate_ Is Nothing
+            
             For Each i In Me
                 If predicate_.xExec01(i) Then Count = Count + 1
             Next
             
             
-        Case HasCountableSource
+        Case Else
             
-            Count = asObject_(enumerableSource_).Count
+            For Each i In Me
+                Count = Count + 1
+            Next
             
             
     End Select
@@ -1071,7 +1037,7 @@ End Function
 Public Function AggregateWithSeed(seed_, func_As_accumulateIn_sourceIn_to_accumulateOut_, Optional resultSelector_As_accumulateIn_to_resultOut_) As Variant
     
     Dim i
-    For Each AggregateWithSeed In qScanWithSeed(seed_, func_As_accumulateIn_sourceIn_to_accumulateOut_)
+    For Each i In qScanWithSeed(seed_, func_As_accumulateIn_sourceIn_to_accumulateOut_)
         VariantCopyInd AggregateWithSeed, i
     Next
     
@@ -1123,10 +1089,8 @@ End Function
 
 Public Function Max(Optional selector_As_sourceIn_to_conversionOut_) As Variant
     
-'    Max = choose_(Delegate.CNew(EnumOperatorProcs, "IsMax"), selector_As_sourceIn_to_conversionOut_)
-    
     Dim i
-    For Each i In qRetrieveWhen(Delegate.CNew(EnumOperatorProcs, "IsMax"), selector_As_sourceIn_to_conversionOut_)
+    For Each i In qLetIf(Delegate.CNew(EnumOperatorProcs, "IsMax"), selector_As_sourceIn_to_conversionOut_)
         VariantCopyInd Max, i
     Next
     
@@ -1134,41 +1098,10 @@ End Function
 
 Public Function Min(Optional selector_As_sourceIn_to_conversionOut_) As Variant
     
-'    Min = choose_(Delegate.CNew(EnumOperatorProcs, "IsMin"), selector_As_sourceIn_to_conversionOut_)
-    
     Dim i
-    For Each i In qRetrieveWhen(Delegate.CNew(EnumOperatorProcs, "IsMin"), selector_As_sourceIn_to_conversionOut_)
+    For Each i In qLetIf(Delegate.CNew(EnumOperatorProcs, "IsMin"), selector_As_sourceIn_to_conversionOut_)
         VariantCopyInd Min, i
     Next
-    
-End Function
-
-
-'前の保存値と今回の値を比較関数に通して、真を返した場合保存値を入れ替える。
-
-Private Function choose_(comparer_As_prevSourceIn_thisSourceIn_to_isEstablishedOut_, Optional selector_As_sourceIn_to_conversionOut_) As Variant
-    
-    Dim comparer_ As IFunc:     Set comparer_ = toFunc_(comparer_As_prevSourceIn_thisSourceIn_to_isEstablishedOut_)
-    
-'    if comparer_ is nothing then err.Raise 'エラー処理
-    
-    Dim selector_ As IFunc:     Set selector_ = toFunc_(selector_As_sourceIn_to_conversionOut_)
-    
-    
-    Dim e_ As IUnknown:  Set e_ = Me.NewEnum
-    
-    If Not xCom.CallNext_EnumVariant(e_, choose_) Then Exit Function
-    
-    
-    Dim candidate_
-    
-    Do While xCom.CallNext_EnumVariant(e_, candidate_)
-        
-        If Not selector_ Is Nothing Then VariantCopy candidate_, selector_.xExec01(candidate_)
-        
-        If comparer_.xExec02(choose_, candidate_) Then VariantCopy choose_, candidate_
-        
-    Loop
     
 End Function
 
@@ -1219,7 +1152,7 @@ End Function
 
 Public Property Get IsBlank() As Boolean
     
-    IsBlank = enumerableSource_ Is Nothing And operation_ Is Nothing
+    IsBlank = enumerableSource_ Is Nothing And operationDelegate_ Is Nothing
     
 End Property
 
