@@ -102,20 +102,21 @@ Private pFunc_ As LongPtr '関数へのアドレス。
 
 'オブジェクトインスタンスを新規生成する。
 
-Public Function CNew(pFunc__ As LongPtr) As FuncPointer
+Public Function CNew(funcPointer_ As LongPtr) As FuncPointer
+    
     Set CNew = New FuncPointer
     
-    CNew.SetFunc pFunc__
+    CNew.SetFunc funcPointer_
     
 End Function
 
 
 '関数アドレスをセットする。
 
-Public Function SetFunc(pFunc__ As LongPtr) As FuncPointer
+Public Function SetFunc(funcPointer_ As LongPtr) As FuncPointer
     Set SetFunc = Me
     
-    pFunc_ = pFunc__
+    pFunc_ = funcPointer_
     
 End Function
 

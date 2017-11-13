@@ -124,7 +124,7 @@ End Type
 
 
 
-
+' VT_RECORD = 36
 
 
 
@@ -248,16 +248,19 @@ Public Function DimAlloc(Optional varType_ As VbVarType = vbVariant) As Ary
     
     '多次元要素の宣言から safeArray 確保用構造体を生成する。
     
-    Dim safeArrayBounds_() As SafeArrayBound:   ReDim safeArrayBounds_(arr_.dimDefs.Count - 1)
+    Dim safeArrayBounds_() As SafeArrayBound
+    ReDim safeArrayBounds_(arr_.dimDefs.Count - 1)
     
-    Dim dimDefine_, i&, totalLength_&
+    Dim totalLength_&:  totalLength_ = 1 '掛け算のベースなので
+    
+    Dim dimDefine_, i&
     For Each dimDefine_ In arr_.dimDefs
         
         safeArrayBounds_(i).BaseIndex = dimDefine_(0)
         
         safeArrayBounds_(i).Elements = dimDefine_(1)
         
-        totalLength_ = totalLength_ + dimDefine_(1)
+        totalLength_ = totalLength_ * dimDefine_(1)
         
         i = i + 1
     Next
@@ -323,7 +326,7 @@ Public Function CopyFrom(array_) As Ary
     VariantCopyInd arr_, array_
 '    VariantCopy arr_, array_
     
-    arr_.serialLength = calcurateSerialLength_(Dimension)
+    arr_.serialLength = calcurateSerialLength_(Dimension - 1)
     
 End Function
 
@@ -334,7 +337,7 @@ Private Function calcurateSerialLength_(dimension_&) As Long
     
     calcurateSerialLength_ = Length(dimension_)
     
-    If dimension_ <= 1 Then Exit Function
+    If dimension_ = 0 Then Exit Function
     
     calcurateSerialLength_ = calcurateSerialLength_ * calcurateSerialLength_(dimension_ - 1)
     
@@ -387,7 +390,7 @@ End Sub
 '情報取得 -------------------------------------------
 
 
-'次元ごとの要素個数を返す。次元を省略した場合、0 次元を指定したとみなす。
+'次元ごとの要素個数を返す。次元は 0 からカウントする。次元を省略した場合、0 次元を指定したとみなす。
 
 Public Property Get Length(Optional dimension_&) As Long
     

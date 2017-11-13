@@ -558,11 +558,11 @@ Private Function getFuncNames_(cm_ As CodeModule, Optional funcNameHeaderWild_$,
     Dim funcNames_ As New Collection
     
     
-    Dim iStart_&:   iStart_ = IIf(iLineStart_ = 0, cm_.CountOfDeclarationLines, iLineStart_)
+    Dim istart_&:   istart_ = IIf(iLineStart_ = 0, cm_.CountOfDeclarationLines, iLineStart_)
     
     
     Dim i&
-    For i = iStart_ To cm_.CountOfLines '一行ずつ検索
+    For i = istart_ To cm_.CountOfLines '一行ずつ検索
         
         
         Dim funcName_$:     funcName_ = cm_.ProcOfLine(i, vbext_pk_Proc)
@@ -1187,28 +1187,28 @@ Private Function scanSyntax_Block_inner_(srcTxt_$, ipos_&, manipurations_ As Col
     
     'オブジェクトを囲うタグを検出し、再帰的にオブジェクト生成関数名と置換していく。
     
-    Dim iL_&:   iL_ = InStr(ipos_, scanSyntax_Block_inner_, tagL_)
+    Dim il_&:   il_ = InStr(ipos_, scanSyntax_Block_inner_, tagL_)
     
-    If iL_ = 0 Then Exit Function
-    
-    
-    scanSyntax_Block_inner_ = scanSyntax_Block_inner_(scanSyntax_Block_inner_, iL_ + 1, manipurations_, results_)
+    If il_ = 0 Then Exit Function
     
     
-    Dim iR_&:   iR_ = InStr(iL_ + 1, scanSyntax_Block_inner_, tagR_)
+    scanSyntax_Block_inner_ = scanSyntax_Block_inner_(scanSyntax_Block_inner_, il_ + 1, manipurations_, results_)
     
-    If iR_ = 0 Then Exit Function
+    
+    Dim ir_&:   ir_ = InStr(il_ + 1, scanSyntax_Block_inner_, tagR_)
+    
+    If ir_ = 0 Then Exit Function
     
     
     
     
     'ブロックを分割する
     
-    Dim txtL_$: txtL_ = Left$(scanSyntax_Block_inner_, iL_ - 1)
+    Dim txtL_$: txtL_ = Left$(scanSyntax_Block_inner_, il_ - 1)
     
-    Dim txtM_$: txtM_ = Mid$(scanSyntax_Block_inner_, iL_ + 1, iR_ - (iL_ + 1))
+    Dim txtM_$: txtM_ = Mid$(scanSyntax_Block_inner_, il_ + 1, ir_ - (il_ + 1))
     
-    Dim txtR_$: txtR_ = Mid$(scanSyntax_Block_inner_, iR_ + 1)
+    Dim txtR_$: txtR_ = Mid$(scanSyntax_Block_inner_, ir_ + 1)
     
     
     

@@ -45,6 +45,8 @@ Private Declare PtrSafe Sub CoTaskMemFree Lib "Ole32" (ByVal pMem_ As LongPtr)
 
 
 
+Private Const cE_NOINTERFACE& = &H80004002
+
 
 
 
@@ -57,8 +59,28 @@ Private Declare PtrSafe Sub CoTaskMemFree Lib "Ole32" (ByVal pMem_ As LongPtr)
 ' GUID 格納用構造体（中身はいじらないので１６バイトあればいい）
 
 Private Type CoGuid
-    Guid(16 - 1) As Byte
+    id0         As Long
+    id1         As Integer
+    id2         As Integer
+    id3(8 - 1)  As Byte
 End Type
+
+'    // IID_NULL is null Interface ID, used when no other Interface ID is known.
+'
+'    IID_NULL = NewGUID("{00000000-0000-0000-0000-000000000000}")
+'
+'    // IID_IUnknown is for IUnknown interfaces.
+'
+'    IID_IUnknown = NewGUID("{00000000-0000-0000-C000-000000000046}")
+'
+'    // IID_IDispatch is for IDispatch interfaces.
+'
+'    IID_IDispatch = NewGUID("{00020400-0000-0000-C000-000000000046}")
+'
+'    // IID_IEnumVariant is for IEnumVariant interfaces
+'
+'    IID_IEnumVariant = NewGUID("{00020404-0000-0000-C000-000000000046}")
+
 
 
 
@@ -141,6 +163,7 @@ End Type
 Public Type EnumVariantStruct
     
     PVtable         As LongPtr
+    
     OperatorFunc    As IFunc
     
     RefCount        As Long
@@ -204,6 +227,58 @@ Public CallableParamArgs()  As VariantStruct
 
 
 'ユーティリティ関数 =======================================================
+
+
+
+'ＧＵＩＤを文字列に変換する。
+
+Public Function GuidToString(guid_ As CoGuid) As String
+    
+    Dim ts_$()
+    ReDim ts_(5 - 1)
+    
+    ts_(0) = Right("00000000" & Hex(guid_.id0), 8)
+    ts_(1) = Right("0000" & Hex(guid_.id1), 4)
+    ts_(2) = Right("0000" & Hex(guid_.id2), 4)
+    ts_(3) = "0000"
+    ts_(4) = "000000000000"
+    
+    Dim i&, istr_&
+    
+    For i = 1 To 4 - 1 Step 2
+        Mid(ts_(3), i, 2) = Right("00" & Hex(guid_.id3(istr_)), 2)
+        istr_ = istr_ + 1
+    Next
+    
+    For i = 1 To 12 - 1 Step 2
+        Mid(ts_(4), i, 2) = Right("00" & Hex(guid_.id3(istr_)), 2)
+        istr_ = istr_ + 1
+    Next
+    
+    GuidToString = Join(ts_, "-")
+    
+End Function
+
+Private Function isIUnknown_(guid_ As CoGuid) As Boolean
+    
+    If Not (guid_.id0 = 0 And guid_.id1 = 0 And guid_.id2 = 0) Then Exit Function
+    
+    Dim bs_(8 - 1) As Byte: bs_(0) = &HC0: bs_(7) = &H46
+    
+    isIUnknown_ = CStr(guid_.id3) = CStr(bs_)
+    
+End Function
+
+Private Function isIEnumVariant_(guid_ As CoGuid) As Boolean
+    
+    If Not (guid_.id0 = &H20404 And guid_.id1 = 0 And guid_.id2 = 0) Then Exit Function
+    
+    Dim bs_(8 - 1) As Byte: bs_(0) = &HC0: bs_(7) = &H46
+    
+    isIEnumVariant_ = CStr(guid_.id3) = CStr(bs_)
+    
+End Function
+
 
 
 
@@ -1248,14 +1323,14 @@ Public Function CreateEnumVariant(operationFunc_ As IFunc) As IEnumVARIANT
     
     ' EnumVariant を生成
     
-    Dim pEvar_ As LongPtr
+    Dim pevar_ As LongPtr
     
-    pEvar_ = createEnumVariant_(VarPtr(vtable_(0)), operationFunc_)
+    pevar_ = createEnumVariant_(VarPtr(vtable_(0)), operationFunc_)
     
     
     ' IEnumVariant オブジェクトを返す
     
-    MoveMemory ByVal VarPtr(CreateEnumVariant), pEvar_, cSizeOfPointer
+    MoveMemory CreateEnumVariant, pevar_, cSizeOfPointer
     
 End Function
 
@@ -1280,9 +1355,9 @@ Private Function createEnumVariant_(pVTable_ As LongPtr, operationFunc_ As IFunc
     
     ' EnumVariant の設定値を確保したヒープメモリにコピーし、IEnumVARIANT の実体を生成する。
     
-    Dim pEvar_ As LongPtr:  pEvar_ = CoTaskMemAlloc(LenB(evar_))
+    Dim pevar_ As LongPtr:  pevar_ = CoTaskMemAlloc(LenB(evar_))
     
-    MoveMemory ByVal pEvar_, evar_, LenB(evar_)
+    MoveMemory ByVal pevar_, evar_, LenB(evar_)
     
     
     ' evar_ とともにオブジェクトが破棄される前に、クリアしておかなければならない。
@@ -1294,7 +1369,7 @@ Private Function createEnumVariant_(pVTable_ As LongPtr, operationFunc_ As IFunc
     
     '実体のアドレスを返す。
     
-    createEnumVariant_ = pEvar_
+    createEnumVariant_ = pevar_
     
 End Function
 
@@ -1316,16 +1391,36 @@ End Function
 
 ' - - - - - - - - - - -
 
-
-Private Function queryInterface_EnumVariant_(ByRef evar_ As EnumVariantStruct, ByRef riid_&, ByRef pEnumVariant_ As LongPtr) As Long
+Private Function queryInterface_EnumVariant_(ByRef evar_ As EnumVariantStruct, ByRef riid_ As CoGuid, ByRef pEnumVariant_ As LongPtr) As Long
     
     evar_.RefCount = evar_.RefCount + 1
     
-    'riid_を確認するようにしないとあれか…。
-    pEnumVariant_ = VarPtr(evar_)
+''    Debug.Print GuidToString(riid_)
+    
+    Select Case True
+        
+        Case isIUnknown_(riid_)
+            
+            pEnumVariant_ = VarPtr(evar_)
+            
+        Case isIEnumVariant_(riid_)
+        
+            pEnumVariant_ = VarPtr(evar_)
+            
+        Case Else
+            
+            queryInterface_EnumVariant_ = cE_NOINTERFACE '取得失敗
+            
+    End Select
     
 ''    Debug.Print "query "; VarPtr(evar_); evar_.RefCount
 End Function
+
+'条件とかよくわかってないんだけど、variant 型に IEnumVariant をセットしようとしたときにエクセルが落ちることがある。
+'いろいろ試してみると、この時 queryInterface() でＧＵＩＤ B196B283-BAB4-101A-B69C-00AA00341D07 を要求しくることに気づいた。
+'これは IprovideClassInfo インターフェースというものらしく、唯一？のメソッド GetClassInfo() から ItypeInfo インターフェースを得るためのもの（っぽい）。
+'これをちゃんと実装するとたぶん落ちなくなるんだと思うが、かなり大変そうなのでやめとく。代わりに cE_NOINTERFACE を返すようにした。
+'とりあえず「型が一致しません」エラーが出て、エクセルが落ちることはなくなった。
 
 
 Private Function addRef_EnumVariant_(ByRef evar_ As EnumVariantStruct) As Long
@@ -1378,9 +1473,14 @@ Private Function reset_EnumVariant_(ByRef evar_ As EnumVariantStruct) As Long
 End Function
 
 
-Private Function clone_EnumVariant_(ByRef evar_ As EnumVariantStruct, lppIEnum As IEnumVARIANT) As Long
+Private Function clone_EnumVariant_(ByRef evar_ As EnumVariantStruct, ByRef pEnumVariant_ As LongPtr) As Long  'ByRef iev_ As IEnumVARIANT) As Long
     Debug.Print "clone "; VarPtr(evar_); evar_.RefCount
+    
+    pEnumVariant_ = VarPtr(evar_)
+'    Set iev_ = CreateEnumVariant(evar_.OperatorFunc) 'ああ、でもこれデリゲートだったら中のオブジェクトまで複製できないよね…。
+    
     clone_EnumVariant_ = 1
+    
 End Function
 
 
@@ -1392,19 +1492,17 @@ End Function
 
 
 'オブジェクトから EnumVariant を取得する。配列はどうしようか…。
- 
-Public Function GetEnumVariant(enumerableSourceObject_) As IEnumVARIANT
+
+Public Function GetEnumVariant(enumerableSourceObject_ As Object) As IEnumVARIANT
     
     If enumerableSourceObject_ Is Nothing Then Exit Function
-    
-    Dim src_ As Object: Set src_ = enumerableSourceObject_
     
     
     Dim iterator_ 'As IEnumVARIANT
     
     Const cIID_IEnumVARIANT& = -4
     
-    xCom.Call_Invoke src_, cIID_IEnumVARIANT, 0, 0, iterator_
+    xCom.Call_Invoke enumerableSourceObject_, cIID_IEnumVARIANT, 0, 0, iterator_
     
     
     Set GetEnumVariant = iterator_

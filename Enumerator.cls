@@ -78,6 +78,7 @@ Private Declare PtrSafe Sub CoTaskMemFree Lib "Ole32" (ByVal pMem_ As LongPtr)
 Private Type EnumVariantStruct
     
     PVtable         As LongPtr
+    
     OperatorFunc    As IFunc
     
     RefCount        As Long
@@ -99,9 +100,9 @@ End Type
 
 Private enumerableSource_   As IUnknown     '参照元となる列挙可能な集合。ソース。IEnumVariant を返せるもの（Enumerator 含む）
 
-Private operationDelegate_  As Delegate     ' select や where といったオペレータ処理のデリゲートを格納する。
+Private operatorDelegate_   As Delegate     ' select や where といったオペレータ処理のデリゲートを格納する。
 
-' operationDelegate_ デリゲートは処理時にはそのまま使用しない、ひな形である。
+' operatorDelegate_ デリゲートは処理時にはそのまま使用しない、ひな形である。
 '　For Each 開始時にはその都度 EnumVariant が生成されるが、それに合わせてデリゲートもインスタンスを作成しなければならない。
 '　なぜなら、デリゲートが所持する EnumOperatorProces オブジェクトにも状態の変化する変数 Variable があるからである。
 '　さらに言うなら、そのオブジェクトは Expression デリゲートを所持する場合があるが、そちらは状態を持たない。
@@ -131,14 +132,26 @@ Attribute NewEnum.VB_UserMemId = -4
     
     Select Case True
         
-        Case enumerableSource_ Is Nothing, TypeOf enumerableSource_ Is Ary
+        Case TypeOf enumerableSource_ Is IEnumVARIANT
+        '自家製 EnumVariant は、他のクラスと比較したときにも真をかえすっぽい。ので、先頭に置かないと
+        '　typeof enumerableSource_ is Ary でも true を返してしまう模様。
             
-            Set NewEnum = xCom.CreateEnumVariant(instantiateOperator_(operationDelegate_, enumerableSource_))
+            'ソースが EnumVariant の場合は、クローンでもしようと思うが、とりあえずはそのままかえす。
+            '　→いや、やはりクローンはしないでいいや。覆いかぶせる使い捨てのようにしよう。
+            
+            Set NewEnum = enumerableSource_
+            
+            
+        Case TypeOf enumerableSource_ Is Ary, TypeOf enumerableSource_ Is Enumerable
+            
+            Set NewEnum = xCom.CreateEnumVariant(instantiateOperator_(operatorDelegate_, enumerableSource_))
             
             
         Case TypeOf enumerableSource_ Is Enumerator
             
-            Set NewEnum = xCom.CreateEnumVariant(instantiateOperator_(operationDelegate_, asObject_(enumerableSource_).NewEnum))
+            Dim enumerator_ As Enumerator:  Set enumerator_ = enumerableSource_
+            
+            Set NewEnum = xCom.CreateEnumVariant(instantiateOperator_(operatorDelegate_, enumerator_.NewEnum))
             
             
         Case TypeOf enumerableSource_ Is Object
@@ -150,13 +163,6 @@ Attribute NewEnum.VB_UserMemId = -4
             xCom.Call_Invoke enumerableSource_, cIID_IEnumVARIANT, 0, 0, ienv_
             
             Set NewEnum = ienv_
-            
-            
-        Case TypeOf enumerableSource_ Is IEnumVARIANT
-            
-            'ソースが EnumVariant の場合は、クローンでもしようと思うが、とりあえずはそのままかえす。
-            
-            Set NewEnum = enumerableSource_
             
             
     End Select
@@ -185,7 +191,7 @@ Public Function SetIterator(enumerableSourceObject_ As Object, operationFunction
     
     Set enumerableSource_ = enumerableSourceObject_
     
-    Set operationDelegate_ = operationFunction_
+    Set operatorDelegate_ = operationFunction_
     
 End Function
 
@@ -198,7 +204,7 @@ Public Function SetOperator(sourceEnumerator_ As Enumerator, operationFunction_ 
     
     Set enumerableSource_ = sourceEnumerator_
     
-    Set operationDelegate_ = operationFunction_
+    Set operatorDelegate_ = operationFunction_
     
 End Function
 
@@ -549,7 +555,13 @@ End Function
 
 
 
+
+
+
+
+
 '比較関数 comparer が真を返した場合の source を次に流す。
+'　qScan の特殊化にすぎないが、事前セレクタが指定できる点が違う（ Min とか Max で便利なだけ）。
 
 Public Function qLetIf(comparer_As_prevSourceIn_thisSourceIn_to_isEstablishedOut_, Optional selector_As_sourceIn_to_preConversionOut_) As Enumerator
     
@@ -565,6 +577,7 @@ Public Function qLetIf(comparer_As_prevSourceIn_thisSourceIn_to_isEstablishedOut
     qLetIf.SetOperator Me, createLetIfOperatorDelegate_("OpLetIf", comparer_, selector_)
     
 End Function
+
 
 Private Function createLetIfOperatorDelegate_(operatorName_$, comparer_ As IFunc, selector_ As IFunc) As Delegate
     
@@ -677,6 +690,36 @@ End Function
 
 
 
+Public Function qOrderByWith(Optional func_As_sourceIn_to_KeyOut_, Optional compareFunc_As_pivotIn_KeyIn_to_isRightSideOut_) As Enumerator
+    
+    Dim selector_       As IFunc:   Set selector_ = toFunc_(func_As_sourceIn_to_KeyOut_)
+    
+    Dim comparer_       As IFunc:   Set comparer_ = toFunc_(compareFunc_As_pivotIn_KeyIn_to_isRightSideOut_)
+    
+    If comparer_ Is Nothing Then Set comparer_ = Delegate.CNew(EnumOperatorProcs, "IsOrderMax")
+    
+    
+    Set qOrderByWith = New Enumerator
+    
+    qOrderByWith.SetOperator Me, createOrderByOperatorDelegate_("OpOrderByWithFirst", selector_, comparer_)
+    
+End Function
+
+
+Private Function createOrderByOperatorDelegate_(operatorName_$, selector_ As IFunc, comparer_ As IFunc) As Delegate
+
+    
+    Dim eop_ As New EnumOperatorProcs
+    
+    eop_.Expression = Array(selector_, comparer_)
+    
+    
+    Set createOrderByOperatorDelegate_ = Delegate.CNew(eop_, operatorName_)
+    
+End Function
+
+
+
 
 
 
@@ -697,13 +740,13 @@ Public Function qSetCollectionSelector(collectionSelector_) As Enumerator
     Dim i&
     Select Case True
         
-        Case operationDelegate_.HasMethod("OpSelectMany"):  i = 0
+        Case operatorDelegate_.HasMethod("OpSelectMany"):  i = 0
          
         Case Else: Exit Function '対応していないエラー
     
     End Select
     
-    operationDelegate_.Target.SetExpression selector_, i
+    operatorDelegate_.Target.SetExpression selector_, i
     
 End Function
 
@@ -719,14 +762,14 @@ Public Function qSetResultSelector(resutlSelector_) As Enumerator
     Dim i&
     Select Case True
         
-        Case operationDelegate_.HasMethod("OpSelectMany"):  i = 1
-        Case operationDelegate_.HasMethod("OpGroupBy"):     i = 2
+        Case operatorDelegate_.HasMethod("OpSelectMany"):  i = 1
+        Case operatorDelegate_.HasMethod("OpGroupBy"):     i = 2
          
         Case Else: Exit Function '対応していないエラー
     
     End Select
     
-    operationDelegate_.Target.SetExpression selector_, i
+    operatorDelegate_.Target.SetExpression selector_, i
     
 End Function
 
@@ -742,13 +785,13 @@ Public Function qSetKeySelector(keySelector_) As Enumerator
     Dim i&
     Select Case True
         
-        Case operationDelegate_.HasMethod("OpGroupBy"):  i = 0
+        Case operatorDelegate_.HasMethod("OpGroupBy"):  i = 0
          
         Case Else: Exit Function '対応していないエラー
     
     End Select
     
-    operationDelegate_.Target.SetExpression selector_, i
+    operatorDelegate_.Target.SetExpression selector_, i
     
 End Function
 
@@ -764,13 +807,13 @@ Public Function qSetElementSelector(elementSelector_) As Enumerator
     Dim i&
     Select Case True
         
-        Case operationDelegate_.HasMethod("OpGroupBy"):  i = 1
+        Case operatorDelegate_.HasMethod("OpGroupBy"):  i = 1
          
         Case Else: Exit Function '対応していないエラー
         
     End Select
     
-    operationDelegate_.Target.SetExpression selector_, i
+    operatorDelegate_.Target.SetExpression selector_, i
     
 End Function
 
@@ -854,6 +897,167 @@ End Function
 
 
 
+Public Function ToArySorted(compareFunc_As_pivotIn_KeyIn_to_isRightSideOut_) As Ary
+    
+    Dim comparer_ As IFunc: Set comparer_ = toFunc_(compareFunc_As_pivotIn_KeyIn_to_isRightSideOut_)
+    
+    If comparer_ Is Nothing Then Set comparer_ = Delegate.CNew(EnumOperatorProcs, "IsOrderMax")
+    
+    
+    Set ToArySorted = quickSortToAry_(Me, comparer_)
+    
+End Function
+
+
+'ソート配列生成 - - - - - - -
+
+' compareFunc_As_pivotIn_KeyIn_to_isRightSideOut_
+
+Private Function quickSortToAry_(src_ As Enumerator, compareFunc_ As IFunc) As Ary
+    
+    Dim c_ As Collection
+    Set c_ = src_.ToCollection
+    
+    Dim items_   As New Ary:    items_.Alloc c_.Count
+    Dim indices_&():            ReDim indices_(c_.Count - 1)
+    
+    Dim istart_&:   istart_ = 0
+    Dim ilast_&:    ilast_ = UBound(indices_)
+    
+    Dim il_& ': il_ = istart_
+    Dim ir_&:   ir_ = ilast_
+    
+    Dim pivot_
+    pivot_ = c_(1)
+    
+    Dim item_, i&
+    For Each item_ In c_
+        
+        If compareFunc_.xExec02(pivot_, item_) Then
+            
+            '右サイドに集まるべき値
+            
+            i = ir_
+            ir_ = ir_ - 1
+            
+        Else
+            
+            '左サイドに集まるべき値
+            
+            i = il_
+            il_ = il_ + 1
+            
+        End If
+        
+        VariantCopyInd items_(i), item_
+        
+        indices_(i) = (il_ + ilast_ - ir_) - 1
+        
+    Next
+    
+    If istart_ < il_ - 1 Then _
+        quickSort_ istart_, il_ - 1, compareFunc_, items_, ref_indices_:=indices_
+    
+    If ir_ + 1 < ilast_ Then _
+        quickSort_ ir_ + 1, ilast_, compareFunc_, items_, ref_indices_:=indices_
+    
+    
+    Set quickSortToAry_ = items_
+    
+End Function
+
+Private Sub quickSort_(istart_&, ilast_&, compareFunc_ As IFunc, items_ As Ary, ByRef ref_indices_&())
+    
+    Dim pivotElement_
+    pivotElement_ = items_(istart_)
+    
+    Dim pivotIndex_ As Long
+    pivotIndex_ = ref_indices_(istart_)
+    
+    Dim il_&:   il_ = istart_
+    Dim ir_&:   ir_ = ilast_
+    
+    GoTo OnL
+    
+    
+    Do
+        
+OnR:    '右サイドに集まるべき値を検索
+        Do
+            Dim lres_:  lres_ = compareFunc_.xExec02(pivotElement_, items_(il_))
+            
+            If IsEmpty(lres_) Then lres_ = pivotIndex_ <= ref_indices_(il_)
+            
+            If lres_ Then Exit Do
+            
+            If il_ >= ilast_ Then Exit Do '本来なくてもいいが、条件にイコールが含まれなかった場合の保険
+            
+            il_ = il_ + 1
+        Loop
+        
+OnL:    '左サイドに集まるべき値を検索
+        Do
+            Dim rres_:  rres_ = compareFunc_.xExec02(items_(ir_), pivotElement_)
+            
+            If IsEmpty(rres_) Then rres_ = ref_indices_(ir_) <= pivotIndex_
+            
+            If rres_ Then Exit Do
+            
+            If ir_ <= istart_ Then Exit Do '本来なくてもいいが、条件にイコールが含まれなかった場合の保険
+            
+            ir_ = ir_ - 1
+        Loop
+        
+        If il_ >= ir_ Then Exit Do
+        
+        
+        swapSortItem_ ref_itemL_:=items_(il_), ref_itemR_:=items_(ir_), ref_indexL_:=ref_indices_(il_), ref_indexR_:=ref_indices_(ir_)
+        
+        
+        il_ = il_ + 1
+        ir_ = ir_ - 1
+        
+    Loop
+    
+    
+    If istart_ < il_ - 1 Then _
+        quickSort_ istart_, il_ - 1, compareFunc_, items_, ref_indices_:=ref_indices_
+    
+    If ir_ + 1 < ilast_ Then _
+        quickSort_ ir_ + 1, ilast_, compareFunc_, items_, ref_indices_:=ref_indices_
+    
+End Sub
+
+Private Sub swapSortItem_(ByRef ref_itemL_, ByRef ref_itemR_, ByRef ref_indexL_, ByRef ref_indexR_)
+    
+    Dim tmpItem_
+    VariantCopyInd tmpItem_, ref_itemL_
+    VariantCopyInd ref_itemL_, ref_itemR_
+    VariantCopyInd ref_itemR_, tmpItem_
+    
+    Dim tmpIndex_&
+    tmpIndex_ = ref_indexL_
+    ref_indexL_ = ref_indexR_
+    ref_indexR_ = tmpIndex_
+    
+End Sub
+
+' - - - - - - - - - -
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Private Function ToJaggedArray() As Variant
     
@@ -885,12 +1089,10 @@ Public Function ToLookup(Optional keySelector_As_sourceIn_to_keyOut_, Optional e
     Dim elmSelector_ As IFunc:  Set elmSelector_ = toFunc_(elementSelector_As_sourceIn_to_groupElementOut_)
     
     
-    Set ToLookup = makeEnumrationDictionary_(Me.NewEnum, keySelector_, elmSelector_, Delegate.CNew(EnumOperatorProcs, "RegistGroupDictionary"))
+    Set ToLookup = makeEnumerationDictionary_ _
+        (Me, keySelector_, elmSelector_, Delegate.CNew(EnumOperatorProcs, "RegistGroupDictionary"))
     
 End Function
-
-
-
 
 
 
@@ -910,17 +1112,16 @@ Public Function ToDictionary(Optional keySelector_As_sourceIn_to_keyOut_, Option
     Dim elmSelector_ As IFunc:  Set elmSelector_ = toFunc_(elementSelector_As_sourceIn_to_groupElementOut_)
     
     
-    Set ToDictionary = makeEnumrationDictionary_(Me.NewEnum, keySelector_, elmSelector_, Delegate.CNew(EnumOperatorProcs, "RegistDictionary"))
+    Set ToDictionary = makeEnumerationDictionary_ _
+        (Me, keySelector_, elmSelector_, Delegate.CNew(EnumOperatorProcs, "RegistDictionary"))
     
 End Function
 
 
 
+'辞書生成 - - - - - - - -
 
-
-
-Private Function makeEnumrationDictionary_ _
-(iterator_ As IEnumVARIANT, keySelector_ As IFunc, elmSelector_ As IFunc, registFunc_ As IFunc) As Dictionary
+Private Function makeEnumerationDictionary_(source_ As Object, keySelector_ As IFunc, elmSelector_ As IFunc, registFunc_ As IFunc) As Dictionary
     
     Dim dict_ As New Dictionary
     
@@ -928,7 +1129,7 @@ Private Function makeEnumrationDictionary_ _
     
     Dim item_
     
-    Do While xCom.CallNext_EnumVariant(iterator_, out_item_:=item_)
+    For Each item_ In source_
         
         
         Dim key_
@@ -949,15 +1150,15 @@ Private Function makeEnumrationDictionary_ _
         registFunc_.xExec03 dict_, key_, element_
         
         
-    Loop
+    Next
     
     
     
-    Set makeEnumrationDictionary_ = dict_
+    Set makeEnumerationDictionary_ = dict_
     
 End Function
 
-
+' - - - - - - - - - -
 
 
 
@@ -1152,7 +1353,7 @@ End Function
 
 Public Property Get IsBlank() As Boolean
     
-    IsBlank = enumerableSource_ Is Nothing And operationDelegate_ Is Nothing
+    IsBlank = enumerableSource_ Is Nothing And operatorDelegate_ Is Nothing
     
 End Property
 

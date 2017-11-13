@@ -13,7 +13,7 @@ Option Explicit
 
 'ＬＩＮＱ的オペレータの処理を記述する。
 
-'　また、Enumerator の operationDelegate_ デリゲートにオペレータメソッドとともにインスタンスがセットされ、
+'　また、Enumerator の operatorDelegate_ デリゲートにオペレータメソッドとともにインスタンスがセットされ、
 '　　オペレータ処理に必要な SourceIterator, Expression, Variable 変数を提供する。
 
 
@@ -60,6 +60,18 @@ Private Declare PtrSafe Function VariantCopyInd Lib "oleaut32" (dst_, src_) As L
 
 
 
+Private Type indexedElement
+    
+    index   As Long
+    
+    element As Variant
+    
+End Type
+
+
+
+
+
 
 
 'メンバ宣言 ============================================================
@@ -69,9 +81,9 @@ Private Declare PtrSafe Function VariantCopyInd Lib "oleaut32" (dst_, src_) As L
 
 Public SourceIterator   As IUnknown 'IEnumVARIANT or source object
 
-Public Expression       As Variant  'オペレーションデリゲートなど、列挙単位で変化しないものを保持する。
+Public Expression       As Variant  'オペレーションデリゲートなど、列挙単位で変化しないものを保持する。配列でもよい。
 
-Public Variable         As Variant  'カウンター変数など、列挙単位で変化する
+Public Variable         As Variant  'カウンター変数など、列挙単位で変化するもの。配列でもよい。
 
 
 
@@ -102,7 +114,6 @@ End Function
 ' expression（式:IFunc）とvariable（変数）をセットする。
 
 Public Function SetParams(expressionParam_, variableParam_) As EnumOperatorProcs
-    
     Set SetParams = Me
     
     VariantCopyInd Expression, expressionParam_
@@ -144,7 +155,7 @@ End Function
 
 ' Ary の列挙子。EnumVariant の列挙処理を記述。
 
-Public Function OpIteratorAry(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpIteratorAry(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim srcAry_ As Ary: Set srcAry_ = SourceIterator
     
@@ -171,7 +182,7 @@ End Function
 
 ' Enumerable.Range() の生成子。
 
-Public Function OpGeneratorRange(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpGeneratorRange(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim i:              i = Variable(0)
     
@@ -197,6 +208,19 @@ End Function
 
 
 
+'単なる next イテレータ
+
+Public Function OpNext(operatorDelegate_, ByRef out_item_) As Variant
+    
+    OpNext = xCom.CallNext_EnumVariant(SourceIterator, out_item_:=out_item_)
+    
+End Function
+
+
+
+
+
+
 
 
 'オペレーション =============================================================
@@ -213,7 +237,7 @@ End Function
 ' selector
 '　element : variant =>> result : variant
 
-Public Function OpSelect(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpSelect(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim selector_   As IFunc:   Set selector_ = Expression
     
@@ -243,7 +267,7 @@ End Function
 ' predicate
 '　element : variant =>> isPassed : boolean
 
-Public Function OpWhere(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpWhere(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim predicate_  As IFunc:   Set predicate_ = Expression
     
@@ -271,7 +295,7 @@ End Function
 
 ' count : long
 
-Public Function OpTake(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpTake(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim counter_&:  counter_ = Variable
     
@@ -295,7 +319,7 @@ End Function
 
 ' count : long
 
-Public Function OpSkip(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpSkip(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim counter_&:  counter_ = Variable
     
@@ -329,7 +353,7 @@ End Function
 
 ' count : long
 
-Public Function OpSpan(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpSpan(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim counter_&:  counter_ = Variable
     
@@ -368,7 +392,7 @@ End Function
 ' result selector　     （省略時は、流れてくる値をそのまま次へ流す）
 '　outer_element, inner_element =>> result : variant
 
-Public Function OpSelectMany(operationDelegate_, ByRef out_innerItem_) As Variant
+Public Function OpSelectMany(operatorDelegate_, ByRef out_innerItem_) As Variant
     
     Dim outerIterator_  As IEnumVARIANT:    Set outerIterator_ = SourceIterator
     Dim innerIterator_  As IEnumVARIANT:    Set innerIterator_ = Variable(0)
@@ -397,7 +421,7 @@ Public Function OpSelectMany(operationDelegate_, ByRef out_innerItem_) As Varian
         
         '内側の EnumVariant を取得する。
         
-        Set innerIterator_ = xCom.GetEnumVariant(outerItem_)
+        Set innerIterator_ = xCom.GetEnumVariant(asObject_(outerItem_))
         
 '        If innerIterator_ Is Nothing Then err.Raise xxx '列挙可能ではなかった
         
@@ -451,7 +475,7 @@ End Function
 
 'ステップ１：辞書構築→第一要素を流す
 
-Public Function OpGroupBy(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpGroupBy(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim keySelector_    As IFunc:   Set keySelector_ = Expression(0)
     Dim elmSelector_    As IFunc:   Set elmSelector_ = Expression(1)
@@ -463,7 +487,8 @@ Public Function OpGroupBy(operationDelegate_, ByRef out_item_) As Variant
     
     Dim groups_ As Dictionary
     
-    Set groups_ = Enumerable(SourceIterator).ToLookup(keySelector_, elmSelector_)
+'    Set groups_ = Enumerable(SourceIterator).ToLookup(keySelector_, elmSelector_)
+    Set groups_ = createEnumVariantEnumerator_(SourceIterator).ToLookup(keySelector_, elmSelector_)
     
     Set Variable(1) = groups_
     
@@ -478,14 +503,14 @@ Public Function OpGroupBy(operationDelegate_, ByRef out_item_) As Variant
     '次からの挙動をグルーピング列挙を行うオペレーターに差し替える。
     
     If resSelector_ Is Nothing _
-        Then shiftOperation_ operationDelegate_, "OpIterateGroup" _
-        Else shiftOperation_ operationDelegate_, "OpIterateGroupWithSelector"
+        Then shiftOperation_ operatorDelegate_, "OpIterateGroup" _
+        Else shiftOperation_ operatorDelegate_, "OpIterateGroupWithSelector"
     
     
     
     '列挙をひとつ実行する。
     
-    OpGroupBy = asIFunc_(operationDelegate_).xExec02(operationDelegate_, out_item_)
+    OpGroupBy = asIFunc_(operatorDelegate_).xExec02(operatorDelegate_, out_item_)
     
     
 End Function
@@ -494,7 +519,7 @@ End Function
 
 'ステップ２：グループの列挙（グループを返す）　※ resultSelector_ が渡されていない場合
 
-Public Function OpIterateGroup(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpIterateGroup(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim groupIterator_  As IEnumVARIANT:    Set groupIterator_ = SourceIterator
     Dim groups_         As Dictionary:      Set groups_ = Variable(1)
@@ -518,7 +543,7 @@ End Function
 
 'ステップ２´：グループ内要素の列挙（グループ内の要素を返す）　※ resultSelector_ が渡されていた場合
 
-Public Function OpIterateGroupWithSelector(operationDelegate_, ByRef out_innerItem_) As Variant
+Public Function OpIterateGroupWithSelector(operatorDelegate_, ByRef out_innerItem_) As Variant
     
     Dim groupIterator_  As IEnumVARIANT:    Set groupIterator_ = SourceIterator
     Dim innerIterator_  As IEnumVARIANT:    Set innerIterator_ = Variable(0)
@@ -595,7 +620,7 @@ End Function
 '　accumulate : variant =>> result : variant
 
 
-Public Function OpScanFirstStep(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpScanFirstStep(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim accumulate_
     
@@ -608,12 +633,12 @@ Public Function OpScanFirstStep(operationDelegate_, ByRef out_item_) As Variant
     VariantCopyInd Variable, accumulate_
     
     
-    OpScanFirstStep = OpScanFirstStep2(operationDelegate_, out_item_:=out_item_)
+    OpScanFirstStep = OpScanFirstStep2(operatorDelegate_, out_item_:=out_item_)
     
 End Function
 
 
-Public Function OpScanFirstStep2(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpScanFirstStep2(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim func_           As IFunc:   Set func_ = Expression(0)
     Dim resSelector_    As IFunc:   Set resSelector_ = Expression(1)
@@ -628,14 +653,14 @@ Public Function OpScanFirstStep2(operationDelegate_, ByRef out_item_) As Variant
         Else VariantCopy out_item_, accumulate_
     
     
-    shiftOperation_ operationDelegate_, "OpScan"
+    shiftOperation_ operatorDelegate_, "OpScan"
     
     OpScanFirstStep2 = True
     
 End Function
 
 
-Public Function OpScan(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpScan(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim func_           As IFunc:   Set func_ = Expression(0)
     Dim resSelector_    As IFunc:   Set resSelector_ = Expression(1)
@@ -686,39 +711,39 @@ End Function
 
 '重複なしの和集合を行う前の辞書準備
 
-Public Function OpUnion(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpUnion(operatorDelegate_, ByRef out_item_) As Variant
     
     Set Variable(0) = SourceIterator '第１イテレータ
     
     Set Variable(2) = New Dictionary '重複除去のための辞書をセットする。
     
-    shiftOperation_ operationDelegate_, "OpUnionStepFirst"
+    shiftOperation_ operatorDelegate_, "OpUnionStepFirst"
     
-    OpUnion = OpUnionStepFirst(operationDelegate_, out_item_:=out_item_)
+    OpUnion = OpUnionStepFirst(operatorDelegate_, out_item_:=out_item_)
     
 End Function
 
-Public Function OpUnionAll(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpUnionAll(operatorDelegate_, ByRef out_item_) As Variant
     
     Set Variable(0) = SourceIterator '第１イテレータ
     
-    shiftOperation_ operationDelegate_, "OpUnionStepFirst"
+    shiftOperation_ operatorDelegate_, "OpUnionStepFirst"
     
-    OpUnionAll = OpUnionStepFirst(operationDelegate_, out_item_:=out_item_)
+    OpUnionAll = OpUnionStepFirst(operatorDelegate_, out_item_:=out_item_)
     
 End Function
 
 
 '１つめのソースが終わるまでこれを経由する。
 
-Public Function OpUnionStepFirst(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpUnionStepFirst(operatorDelegate_, ByRef out_item_) As Variant
     
     
     '列挙
     
     Dim isRetrieved_ As Boolean
     
-    isRetrieved_ = OpUnionBody(operationDelegate_, out_item_:=out_item_)
+    isRetrieved_ = OpUnionBody(operatorDelegate_, out_item_:=out_item_)
     
     
     
@@ -735,10 +760,10 @@ Public Function OpUnionStepFirst(operationDelegate_, ByRef out_item_) As Variant
         
         Set Variable(0) = Enumerable(nextSource_).NewEnum ' next iterator_
         
-        shiftOperation_ operationDelegate_, "OpUnionBody"
+        shiftOperation_ operatorDelegate_, "OpUnionBody"
         
         
-        isRetrieved_ = OpUnionBody(operationDelegate_, out_item_:=out_item_)
+        isRetrieved_ = OpUnionBody(operatorDelegate_, out_item_:=out_item_)
         
     End If
     
@@ -750,11 +775,11 @@ End Function
 
 'イテレーション本体
 
-Public Function OpUnionBody(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpUnionBody(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim iterator_   As IEnumVARIANT:    Set iterator_ = Variable(0)
     
-    Dim nextSource_ As Object:          Set nextSource_ = Variable(1)
+'    Dim nextSource_ As Object:          Set nextSource_ = Variable(1)
     
     Dim distincts_  As Dictionary:      Set distincts_ = Variable(2)
     
@@ -811,7 +836,13 @@ End Function
 ' resultSelector
 '　first_source : variant, second_source : variant =>> result : variant
 
-Public Function OpZip(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpZipFirst(operatorDelegate_, ByRef out_item_) As Variant
+    
+    
+    
+End Function
+
+Public Function OpZip(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim resSelector_    As IFunc:           Set resSelector_ = Expression
     
@@ -888,7 +919,7 @@ End Function
 ' selector
 '　source : variant =>> conversion : variant
 
-Public Function OpLetIf(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpLetIf(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim selector_   As IFunc:   Set selector_ = Expression(1)
     
@@ -904,7 +935,7 @@ Public Function OpLetIf(operationDelegate_, ByRef out_item_) As Variant
         VariantCopyInd Variable, out_item_
         
         
-        shiftOperation_ operationDelegate_, "OpLetIfNext"
+        shiftOperation_ operatorDelegate_, "OpLetIfNext"
         
         OpLetIf = True
         
@@ -913,7 +944,7 @@ Public Function OpLetIf(operationDelegate_, ByRef out_item_) As Variant
 End Function
 
 
-Public Function OpLetIfNext(operationDelegate_, ByRef out_item_) As Variant
+Public Function OpLetIfNext(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim comparer_   As IFunc:   Set comparer_ = Expression(0)
     Dim selector_   As IFunc:   Set selector_ = Expression(1)
@@ -955,6 +986,55 @@ End Function
 
 
 
+
+
+' qOrderByWith
+
+' selector
+'　source : variant =>> key : variant
+
+' comparer
+'　pivot : variant, key : variant =>> isToPutToRightSide : boolean
+
+Public Function OpOrderByWithFirst(operatorDelegate_, ByRef out_item_) As Variant
+    
+    Dim selector_   As IFunc:   Set selector_ = Expression(0)
+    Dim comparer_   As IFunc:   Set comparer_ = Expression(1)
+    
+    
+    'ソートした結果を Ary に配置し、以降は Ary のイテレータとしてふるまうようにする。
+    
+    If selector_ Is Nothing _
+        Then Set SourceIterator = createEnumVariantEnumerator_(SourceIterator).ToArySorted(comparer_) _
+        Else Set SourceIterator = createEnumVariantEnumerator_(SourceIterator).qSelect(selector_).ToArySorted(comparer_)
+    
+    shiftOperation_ operatorDelegate_, "OpIteratorAry"
+    
+    Expression = Empty
+    
+    Variable = 0&
+    
+    
+    OpOrderByWithFirst = OpIteratorAry(operatorDelegate_, out_item_:=out_item_)
+    
+End Function
+
+
+
+
+
+
+
+
+
+
+
+
+
+' Expression として使用する ------------------------------
+
+
+
 Public Function IsMax(other_, this_) As Variant
     
     IsMax = this_ > other_
@@ -968,6 +1048,24 @@ Public Function IsMin(other_, this_) As Variant
 End Function
 
 
+Public Function IsOrderMax(other_, this_) As Variant
+    
+    If this_ = other_ Then Exit Function
+    
+    IsOrderMax = this_ >= other_
+    
+End Function
+
+Public Function IsOrderMin(other_, this_) As Variant
+    
+    If this_ = other_ Then Exit Function
+    
+    IsOrderMin = this_ <= other_
+    
+End Function
+
+
+' ---------------------------------------------------------
 
 
 
@@ -976,6 +1074,7 @@ End Function
 
 
 
+'サポートデリゲート用 -------------------------------------------
 
 
 
@@ -988,7 +1087,6 @@ Public Function RegistDictionary(dict_, key_, element_) As Variant
     elements_.Add Grouping.ToAyKey(key_), element_
     
 End Function
-
 
 
 
@@ -1038,6 +1136,7 @@ Private Function getGrouping_(groups_ As Dictionary, key_) As Grouping
 End Function
 
 
+' ---------------------------------------------------------
 
 
 
@@ -1046,15 +1145,15 @@ End Function
 
 
 
-
+'ユーティリティ -------------------------------------------------------
 
 
 
 '次からのオペレーターを差し替える。
 
-Private Sub shiftOperation_(operationDelegate_, methodName_$)
+Private Sub shiftOperation_(operatorDelegate_, methodName_$)
     
-    Dim eop_ As Delegate:    Set eop_ = operationDelegate_
+    Dim eop_ As Delegate:    Set eop_ = operatorDelegate_
     
     eop_.SetMethod methodName_:=methodName_
     
@@ -1063,12 +1162,34 @@ End Sub
 
 ' IFunc にキャストする。
 
-Private Function asIFunc_(operationDelegate_) As IFunc
+Private Function asIFunc_(operatorDelegate_) As IFunc
     
-    Set asIFunc_ = operationDelegate_
+    Set asIFunc_ = operatorDelegate_
     
 End Function
 
+
+' Object にキャストする。
+
+Private Function asObject_(obj_) As Object
+    
+    Set asObject_ = obj_
+    
+End Function
+
+
+' IEnumVariant を格納した Enumerator を生成する。
+
+Private Function createEnumVariantEnumerator_(evar_ As IEnumVARIANT) As Enumerator
+    
+    Set createEnumVariantEnumerator_ = New Enumerator
+    
+    createEnumVariantEnumerator_.SetSource evar_
+    
+End Function
+
+
+' ---------------------------------------------------------
 
 
 
