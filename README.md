@@ -13,13 +13,14 @@
 
 さらにおまけとして   
 
-* Ary クラスによる配列のオブジェクト化（値渡しではなく参照渡しを可能とする）   
+* Ary クラスによる配列のオブジェクト化（値渡しではなく参照渡しを可能とする）  ※現状はユーザー定義型未対応 
 
 ## どうやって使う
 
 各種モジュールをＶＢＥにインポートしてください。  
 参照設定は通常の Excel/Access の設定に加え、以下を必要とします。  
 * Microsoft Scripting Runtime  
+* Microsoft Visual Basic for Applications Extensibility （いずれ不要にしたい）
 
 簡単な使用例
 
@@ -82,6 +83,8 @@ selector 等には、文字列のコード式／IFunc を実装するもの／�
 * ToCollection
 * ToDictionay( Optional keySelector, Optional elementSelector )
 * ToLookUp( Optional keySelector, Optional elementSelector )
+* qOrderByWith( Optional func, Optional comparer ) ... comparer で比較関数を指定できる（真を返す場合後に列挙される、等値の時何も返さないようにすれば安定ソートになる、comparer 省略時は昇順）
+* ToArySorted( Optional comparer ) ... ソート済配列を生成する
 * その他順次追加
 
 ## 疑似ラムダ式について
@@ -112,7 +115,8 @@ selector 等には、文字列のコード式／IFunc を実装するもの／�
 ## 列挙可能なオブジェクト
 
 * IEnumVARIANT を返せるオブジェクト（ _NewEnum メソッド／プロパティを持つオブジェクト）
-* Ary オブジェクト ~~（素の Array は現在対象外）←ただし、列挙中にデバッグトレースをかけると特定の場所でエクセルが落ちる…~~
+* Ary オブジェクト
+* 配列（ Enumerable.FromArray() ）　※コピー渡しになってしまう
 * 現在未実装ですが、レコードセットなども対応予定
 
 ## モジュール一覧
@@ -121,9 +125,9 @@ selector 等には、文字列のコード式／IFunc を実装するもの／�
 * Delegate　　　　　　　 IFunc インターフェースを実装
 * FuncPointer　　　　　　IFunc インターフェースを実装　名前は FuncObject とかのほうがいいだろうか
 * Capt　　　　　　　　　 肥大化ぎみ、RegExp の使用を再検討中…orz
-* Enumerable　　　　　　 ~~.From() しかメンバがないので、要らないかも？~~
+* Enumerable　　　　　　 
 * Enumerator
 * EnumOperatorProcs　　  オペレーターの処理が記述されている
 * Grouping　　　　　　　 Collection で代用してもいいかも
-* Ary　　　　　　　　　　インターフェースに難ありかと
+* Ary　　　　　　　　　　インターフェースに難ありかと（多次元の宣言と item() の戻り値を取られた時の問題）
 * xCom　　　　　　　　　 ＣＯＭ関連のユーティリティと EnumVariant の実体実装　（標準モジュール）
