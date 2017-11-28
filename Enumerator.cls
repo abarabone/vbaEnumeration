@@ -636,14 +636,38 @@ Private Function createUnionOperatorDelegate_(operatorName_$, secondEnumerableSo
     
     Dim eop_ As New EnumOperatorProcs
     
-    Dim iterator_   As IEnumVARIANT
     Dim nextSource_ As Object:          Set nextSource_ = secondEnumerableSource_
     Dim distincts_  As Dictionary
     
-    eop_.Variable = Array(iterator_, nextSource_, distincts_)
+    eop_.Variable = Array(nextSource_, distincts_)
     
     
     Set createUnionOperatorDelegate_ = Delegate.CNew(eop_, operatorName_)
+    
+End Function
+
+
+
+
+
+
+Public Function qReverse() As Enumerator
+    
+    Set qReverse = New Enumerator
+    
+    qReverse.SetOperator Me, createReverseOperatorDelegate_("OpReverseFirst")
+    
+End Function
+
+Private Function createReverseOperatorDelegate_(operatorName_$) As Delegate
+
+    
+    Dim eop_ As New EnumOperatorProcs
+    
+    Set eop_.Variable = Nothing
+    
+    
+    Set createReverseOperatorDelegate_ = Delegate.CNew(eop_, operatorName_)
     
 End Function
 
@@ -662,7 +686,7 @@ Public Function qZip(secondEnumerableSource_ As Object, Optional resultSelector_
     
     Set qZip = New Enumerator
     
-    qZip.SetOperator Me, createZipOperatorDelegate_("OpZip", resSelector_, secondEnumerableSource_)
+    qZip.SetOperator Me, createZipOperatorDelegate_("OpZipFirst", resSelector_, secondEnumerableSource_)
     
 End Function
 
@@ -718,6 +742,120 @@ Private Function createOrderByOperatorDelegate_(operatorName_$, selector_ As IFu
     
 End Function
 
+
+
+
+
+
+Private Function qJoin_( _
+ _
+    inner_ As Object, _
+ _
+    Optional outerKeySelector_As_outerSourceIn_to_keyOut_, Optional innerKeySelector_As_innerSourceIn_to_keyOut_, _
+ _
+    Optional resultSelector_As_outerSourceIn_innerSourceIn_to_elementOut_ _
+ _
+) As Enumerator
+    
+    Dim resSelector_        As IFunc:   Set resSelector_ = toFunc_(resultSelector_As_outerSourceIn_innerSourceIn_to_elementOut_)
+    
+    Dim eop_ As New EnumOperatorProcs
+    
+    Set eop_.Expression = resSelector_
+    
+    
+    Set qJoin_ = qGroupJoin(inner_, outerKeySelector_As_outerSourceIn_to_keyOut_, innerKeySelector_As_innerSourceIn_to_keyOut_) _
+ _
+        .qSelectMany(Delegate.CNew(eop_, "InnerJoinCollectionSelector"), Delegate.CNew(eop_, "InnerJoinResultSelector"))
+    
+End Function
+
+
+
+Public Function qJoin( _
+ _
+    inner_ As Object, _
+ _
+    Optional outerKeySelector_As_outerSourceIn_to_keyOut_, Optional innerKeySelector_As_innerSourceIn_to_keyOut_, _
+ _
+    Optional resultSelector_As_outerSourceIn_innerSourceIn_to_elementOut_ _
+ _
+) As Enumerator
+    
+    Dim outerKeySelector_   As IFunc:   Set outerKeySelector_ = toFunc_(outerKeySelector_As_outerSourceIn_to_keyOut_)
+    Dim innerKeySelector_   As IFunc:   Set innerKeySelector_ = toFunc_(innerKeySelector_As_innerSourceIn_to_keyOut_)
+    Dim resSelector_        As IFunc:   Set resSelector_ = toFunc_(resultSelector_As_outerSourceIn_innerSourceIn_to_elementOut_)
+    
+    
+    Dim innerEnumerator_    As Enumerator
+    Set innerEnumerator_ = Enumerable(inner_)
+    
+'    if innerenumerator_ is nothing then err.Raise 'エラー処理
+    
+    
+    Set qJoin = New Enumerator
+    
+    qJoin.SetOperator Me, createJoinOperatorDelegate_("OpInnerJoinFirst", outerKeySelector_, innerKeySelector_, Nothing, resSelector_, innerEnumerator_)
+    
+End Function
+
+
+Public Function qGroupJoin( _
+ _
+    inner_ As Object, _
+ _
+    Optional outerKeySelector_As_outerSourceIn_to_keyOut_, Optional innerKeySelector_As_innerSourceIn_to_keyOut_, _
+ _
+    Optional resultSelector_As_outerSourceIn_innerSourceCollectionIn_to_elementOut_ _
+ _
+) As Enumerator
+    
+    Dim outerKeySelector_   As IFunc:   Set outerKeySelector_ = toFunc_(outerKeySelector_As_outerSourceIn_to_keyOut_)
+    Dim innerKeySelector_   As IFunc:   Set innerKeySelector_ = toFunc_(innerKeySelector_As_innerSourceIn_to_keyOut_)
+    Dim resSelector_        As IFunc:   Set resSelector_ = toFunc_(resultSelector_As_outerSourceIn_innerSourceCollectionIn_to_elementOut_)
+    
+    
+    Dim innerEnumerator_    As Enumerator
+    Set innerEnumerator_ = Enumerable(inner_)
+    
+'    if innerenumerator_ is nothing then err.Raise 'エラー処理
+    
+    
+    Set qGroupJoin = New Enumerator
+    
+    qGroupJoin.SetOperator Me, createJoinOperatorDelegate_("OpGroupJoinFirst", outerKeySelector_, innerKeySelector_, resSelector_, Nothing, innerEnumerator_)
+    
+End Function
+
+
+Private Function createJoinOperatorDelegate_( _
+ _
+    operatorName_$, _
+ _
+    outerKeySelector_ As IFunc, innerKeySelector_ As IFunc, _
+ _
+    outerResSelector_ As IFunc, innerResSelector_ As IFunc, _
+ _
+    innerSourceEnumerator_ As Enumerator _
+ _
+) As Delegate
+
+    
+    Dim eop_ As New EnumOperatorProcs
+    
+    eop_.Expression = Array(outerKeySelector_, innerKeySelector_, outerResSelector_, innerResSelector_)
+    
+    Dim innerSource_    As Enumerator:  Set innerSource_ = innerSourceEnumerator_
+    Dim innerDict_      As Dictionary
+    Dim innerIterator_  As IEnumVARIANT
+    Dim outerItem_
+    
+    eop_.Variable = Array(innerSource_, innerDict_, innerIterator_, outerItem_)
+    
+    
+    Set createJoinOperatorDelegate_ = Delegate.CNew(eop_, operatorName_)
+    
+End Function
 
 
 
@@ -1082,15 +1220,27 @@ End Function
 ' elementSelector   （省略時は、流れてくる値をそのまま次へ流す）
 '　element : variant =>> element_result : variant
 
-Public Function ToLookup(Optional keySelector_As_sourceIn_to_keyOut_, Optional elementSelector_As_sourceIn_to_groupElementOut_) As Dictionary
+Public Function ToLookupDictionary(Optional keySelector_As_sourceIn_to_keyOut_, Optional elementSelector_As_sourceIn_to_groupElementOut_) As Dictionary
     
     Dim keySelector_ As IFunc:  Set keySelector_ = toFunc_(keySelector_As_sourceIn_to_keyOut_)
     
     Dim elmSelector_ As IFunc:  Set elmSelector_ = toFunc_(elementSelector_As_sourceIn_to_groupElementOut_)
     
-    
-    Set ToLookup = makeEnumerationDictionary_ _
+     
+    Set ToLookupDictionary = makeEnumerationDictionary_ _
         (Me, keySelector_, elmSelector_, Delegate.CNew(EnumOperatorProcs, "RegistGroupDictionary"))
+    
+End Function
+
+
+'グルーピング辞書を生成してからグルーピングの配列を生成する。
+
+Public Function ToLookup(Optional keySelector_As_sourceIn_to_keyOut_, Optional elementSelector_As_sourceIn_to_groupElementOut_) As Ary
+    
+    Dim lookupDict_ As Dictionary
+    Set lookupDict_ = ToLookupDictionary(keySelector_As_sourceIn_to_keyOut_, elementSelector_As_sourceIn_to_groupElementOut_)
+    
+    Set ToLookup = Ary.CNew.MoveFrom(lookupDict_.Items) '無駄なコピーではあるよな…あとできれば Collection にしたかったし
     
 End Function
 
@@ -1434,6 +1584,7 @@ End Function
 Private Function toFunc_(expression_) As IFunc
     
     If IsMissing(expression_) Then Exit Function
+    If IsObject(expression_) Then If expression_ Is Nothing Then Exit Function
     
     Select Case True
         

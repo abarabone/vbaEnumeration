@@ -155,7 +155,7 @@ End Function
 
 ' Ary の列挙子。EnumVariant の列挙処理を記述。
 
-Public Function OpIteratorAry(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpIteratorAry(operatorDelegate_, ByRef out_Item_) As Variant
     
     Dim srcAry_ As Ary: Set srcAry_ = SourceIterator
     
@@ -164,7 +164,7 @@ Public Function OpIteratorAry(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim isRetrieved_ As Boolean
     
-    isRetrieved_ = srcAry_.Acquire(index_, out_item_:=out_item_)
+    isRetrieved_ = srcAry_.Acquire(index_, out_Item_:=out_Item_)
     
     If Not isRetrieved_ Then Exit Function
     
@@ -182,7 +182,7 @@ End Function
 
 ' Enumerable.Range() の生成子。
 
-Public Function OpGeneratorRange(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpGeneratorRange(operatorDelegate_, ByRef out_Item_) As Variant
     
     Dim i:              i = Variable(0)
     
@@ -193,7 +193,7 @@ Public Function OpGeneratorRange(operatorDelegate_, ByRef out_item_) As Variant
     
     If remaining_ <= 0 Then Exit Function
     
-    out_item_ = i
+    out_Item_ = i
     
     
     Variable(0) = i + span_
@@ -210,9 +210,9 @@ End Function
 
 '単なる next イテレータ
 
-Public Function OpNext(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpNext(operatorDelegate_, ByRef out_Item_) As Variant
     
-    OpNext = xCom.CallNext_EnumVariant(SourceIterator, out_item_:=out_item_)
+    OpNext = xCom.CallNext_EnumVariant(SourceIterator, out_Item_:=out_Item_)
     
 End Function
 
@@ -237,16 +237,16 @@ End Function
 ' selector
 '　element : variant =>> result : variant
 
-Public Function OpSelect(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpSelect(operatorDelegate_, ByRef out_Item_) As Variant
     
     Dim selector_   As IFunc:   Set selector_ = Expression
     
     
     
-    Do While xCom.CallNext_EnumVariant(SourceIterator, out_item_:=out_item_)
+    Do While xCom.CallNext_EnumVariant(SourceIterator, out_Item_:=out_Item_)
         
         
-        VariantCopyInd out_item_, selector_.xExec01(out_item_)
+        VariantCopyInd out_Item_, selector_.xExec01(out_Item_)
         
         
         OpSelect = True
@@ -267,16 +267,16 @@ End Function
 ' predicate
 '　element : variant =>> isPassed : boolean
 
-Public Function OpWhere(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpWhere(operatorDelegate_, ByRef out_Item_) As Variant
     
     Dim predicate_  As IFunc:   Set predicate_ = Expression
     
     
     Dim isRetrieved_ As Boolean
     
-    Do While xCom.CallNext_EnumVariant(SourceIterator, out_item_:=out_item_)
+    Do While xCom.CallNext_EnumVariant(SourceIterator, out_Item_:=out_Item_)
         
-        isRetrieved_ = predicate_.xExec01(out_item_)
+        isRetrieved_ = predicate_.xExec01(out_Item_)
         
         If isRetrieved_ Then Exit Do
         
@@ -295,14 +295,14 @@ End Function
 
 ' count : long
 
-Public Function OpTake(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpTake(operatorDelegate_, ByRef out_Item_) As Variant
     
     Dim counter_&:  counter_ = Variable
     
     
     Dim isRetrieved_ As Boolean
     
-    isRetrieved_ = xCom.CallNext_EnumVariant(SourceIterator, out_item_:=out_item_) And counter_ > 0
+    isRetrieved_ = xCom.CallNext_EnumVariant(SourceIterator, out_Item_:=out_Item_) And counter_ > 0
     
     
     Variable = counter_ - 1
@@ -319,14 +319,14 @@ End Function
 
 ' count : long
 
-Public Function OpSkip(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpSkip(operatorDelegate_, ByRef out_Item_) As Variant
     
     Dim counter_&:  counter_ = Variable
     
     
     Dim isRetrieved_ As Boolean
     
-    Do While xCom.CallNext_EnumVariant(SourceIterator, out_item_:=out_item_)
+    Do While xCom.CallNext_EnumVariant(SourceIterator, out_Item_:=out_Item_)
         
         
         isRetrieved_ = counter_ <= 0
@@ -353,14 +353,14 @@ End Function
 
 ' count : long
 
-Public Function OpSpan(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpSpan(operatorDelegate_, ByRef out_Item_) As Variant
     
     Dim counter_&:  counter_ = Variable
     
     
     Dim isRetrieved_ As Boolean
     
-    Do While xCom.CallNext_EnumVariant(SourceIterator, out_item_:=out_item_)
+    Do While xCom.CallNext_EnumVariant(SourceIterator, out_Item_:=out_Item_)
         
         
         isRetrieved_ = counter_ <= 0
@@ -396,7 +396,7 @@ Public Function OpSelectMany(operatorDelegate_, ByRef out_innerItem_) As Variant
     
     Dim outerIterator_  As IEnumVARIANT:    Set outerIterator_ = SourceIterator
     Dim innerIterator_  As IEnumVARIANT:    Set innerIterator_ = Variable(0)
-    Dim outerItem_:                         Set outerItem_ = Variable(1)
+    Dim outerItem_:                         VariantCopy outerItem_, Variable(1) 'Set outerItem_ = Variable(1)
     
     Dim colSelector_    As IFunc:           Set colSelector_ = Expression(0)
     Dim resSelector_    As IFunc:           Set resSelector_ = Expression(1)
@@ -410,25 +410,27 @@ Public Function OpSelectMany(operatorDelegate_, ByRef out_innerItem_) As Variant
     
     '外側の列挙
     
-    Do While xCom.CallNext_EnumVariant(outerIterator_, out_item_:=outerItem_)
+    Do While xCom.CallNext_EnumVariant(outerIterator_, out_Item_:=outerItem_)
         
-        If Not colSelector_ Is Nothing Then
-            
-            VariantCopyInd outerItem_, colSelector_.xExec01(outerItem_)
-            
-        End If
+        Dim outerElements_ As Object 'いずれは配列も考慮できるようにしたいが
+        
+        If Not colSelector_ Is Nothing _
+            Then Set outerElements_ = colSelector_.xExec01(outerItem_) _
+            Else Set outerElements_ = outerItem_
         
         
         '内側の EnumVariant を取得する。
         
-        Set innerIterator_ = xCom.GetEnumVariant(asObject_(outerItem_))
+        Set innerIterator_ = xCom.GetEnumVariant(outerElements_)
         
 '        If innerIterator_ Is Nothing Then err.Raise xxx '列挙可能ではなかった
+        
+'        If Grouping.IsAnonymousObject(outerElements_) Then Err.Raise '匿名オブジェクトは列挙できない
         
         
 OnInner: '内側の列挙
         
-        Do While xCom.CallNext_EnumVariant(innerIterator_, out_item_:=out_innerItem_)
+        Do While xCom.CallNext_EnumVariant(innerIterator_, out_Item_:=out_innerItem_)
             
             If Not resSelector_ Is Nothing Then
                 
@@ -439,7 +441,7 @@ OnInner: '内側の列挙
             
             Set Variable(0) = innerIterator_
             
-            Set Variable(1) = outerItem_
+            VariantCopyInd Variable(1), outerItem_ 'Set Variable(1) = outerItem_
             
             OpSelectMany = True
             
@@ -460,7 +462,7 @@ End Function
 
 
 
-' qGroupBy( keySelector[, elementSelector][, resultSelector] )
+' qGroupBy( keySelector[, elementSelector[, resultSelector] ] )
 
 ' keySelector       （省略時は、流れてくる値をそのまま次へ流す）
 '　element : variant =>> key : variant
@@ -475,7 +477,7 @@ End Function
 
 'ステップ１：辞書構築→第一要素を流す
 
-Public Function OpGroupBy(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpGroupBy(operatorDelegate_, ByRef out_Item_) As Variant
     
     Dim keySelector_    As IFunc:   Set keySelector_ = Expression(0)
     Dim elmSelector_    As IFunc:   Set elmSelector_ = Expression(1)
@@ -485,7 +487,7 @@ Public Function OpGroupBy(operatorDelegate_, ByRef out_item_) As Variant
     
     'グルーピング結果を構築する。
     
-    Dim groups_ As Dictionary
+    Dim groups_ As Ary 'Dictionary
     
 '    Set groups_ = Enumerable(SourceIterator).ToLookup(keySelector_, elmSelector_)
     Set groups_ = createEnumVariantEnumerator_(SourceIterator).ToLookup(keySelector_, elmSelector_)
@@ -510,7 +512,7 @@ Public Function OpGroupBy(operatorDelegate_, ByRef out_item_) As Variant
     
     '列挙をひとつ実行する。
     
-    OpGroupBy = asIFunc_(operatorDelegate_).xExec02(operatorDelegate_, out_item_)
+    OpGroupBy = asIFunc_(operatorDelegate_).xExec02(operatorDelegate_, out_Item_)
     
     
 End Function
@@ -519,7 +521,7 @@ End Function
 
 'ステップ２：グループの列挙（グループを返す）　※ resultSelector_ が渡されていない場合
 
-Public Function OpIterateGroup(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpIterateGroup(operatorDelegate_, ByRef out_Item_) As Variant
     
     Dim groupIterator_  As IEnumVARIANT:    Set groupIterator_ = SourceIterator
     Dim groups_         As Dictionary:      Set groups_ = Variable(1)
@@ -527,9 +529,9 @@ Public Function OpIterateGroup(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim key_
     
-    Do While xCom.CallNext_EnumVariant(groupIterator_, out_item_:=key_)
+    Do While xCom.CallNext_EnumVariant(groupIterator_, out_Item_:=key_)
         
-        Set out_item_ = groups_(key_)
+        Set out_Item_ = groups_(key_)
         
         OpIterateGroup = True
         
@@ -565,7 +567,7 @@ Public Function OpIterateGroupWithSelector(operatorDelegate_, ByRef out_innerIte
     
     Dim outerItem_
     
-    Do While xCom.CallNext_EnumVariant(groupIterator_, out_item_:=dictinalyKey_)
+    Do While xCom.CallNext_EnumVariant(groupIterator_, out_Item_:=dictinalyKey_)
         
         
         '内側の EnumVariant を取得する。
@@ -579,7 +581,7 @@ Public Function OpIterateGroupWithSelector(operatorDelegate_, ByRef out_innerIte
         
 OnInner: '内側の列挙
         
-        Do While xCom.CallNext_EnumVariant(innerIterator_, out_item_:=out_innerItem_)
+        Do While xCom.CallNext_EnumVariant(innerIterator_, out_Item_:=out_innerItem_)
             
             
             'セレクターを通して値を返す。
@@ -620,25 +622,25 @@ End Function
 '　accumulate : variant =>> result : variant
 
 
-Public Function OpScanFirstStep(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpScanFirstStep(operatorDelegate_, ByRef out_Item_) As Variant
     
     Dim accumulate_
     
     
     ' seed を伴わない場合の最初の値を取得する。
     
-    If Not xCom.CallNext_EnumVariant(SourceIterator, out_item_:=accumulate_) Then Exit Function
+    If Not xCom.CallNext_EnumVariant(SourceIterator, out_Item_:=accumulate_) Then Exit Function
     
     
     VariantCopyInd Variable, accumulate_
     
     
-    OpScanFirstStep = OpScanFirstStep2(operatorDelegate_, out_item_:=out_item_)
+    OpScanFirstStep = OpScanFirstStep2(operatorDelegate_, out_Item_:=out_Item_)
     
 End Function
 
 
-Public Function OpScanFirstStep2(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpScanFirstStep2(operatorDelegate_, ByRef out_Item_) As Variant
     
     Dim func_           As IFunc:   Set func_ = Expression(0)
     Dim resSelector_    As IFunc:   Set resSelector_ = Expression(1)
@@ -649,8 +651,8 @@ Public Function OpScanFirstStep2(operatorDelegate_, ByRef out_item_) As Variant
     '最初の値を result selector に通して返す。
     
     If Not resSelector_ Is Nothing _
-        Then VariantCopy out_item_, resSelector_.xExec01(accumulate_) _
-        Else VariantCopy out_item_, accumulate_
+        Then VariantCopy out_Item_, resSelector_.xExec01(accumulate_) _
+        Else VariantCopy out_Item_, accumulate_
     
     
     shiftOperation_ operatorDelegate_, "OpScan"
@@ -660,7 +662,7 @@ Public Function OpScanFirstStep2(operatorDelegate_, ByRef out_item_) As Variant
 End Function
 
 
-Public Function OpScan(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpScan(operatorDelegate_, ByRef out_Item_) As Variant
     
     Dim func_           As IFunc:   Set func_ = Expression(0)
     Dim resSelector_    As IFunc:   Set resSelector_ = Expression(1)
@@ -671,7 +673,7 @@ Public Function OpScan(operatorDelegate_, ByRef out_item_) As Variant
     
     
     
-    Do While xCom.CallNext_EnumVariant(SourceIterator, out_item_:=element_)
+    Do While xCom.CallNext_EnumVariant(SourceIterator, out_Item_:=element_)
         
         
         '前の値と今回の値を func にかける。
@@ -682,8 +684,8 @@ Public Function OpScan(operatorDelegate_, ByRef out_item_) As Variant
         '結果を result selecor に通して返す。
         
         If Not resSelector_ Is Nothing _
-            Then VariantCopy out_item_, resSelector_.xExec01(Variable) _
-            Else VariantCopy out_item_, accumulate_
+            Then VariantCopy out_Item_, resSelector_.xExec01(Variable) _
+            Else VariantCopy out_Item_, accumulate_
         
         
         OpScan = True
@@ -711,39 +713,35 @@ End Function
 
 '重複なしの和集合を行う前の辞書準備
 
-Public Function OpUnion(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpUnion(operatorDelegate_, ByRef out_Item_) As Variant
     
-    Set Variable(0) = SourceIterator '第１イテレータ
-    
-    Set Variable(2) = New Dictionary '重複除去のための辞書をセットする。
+    Set Variable(1) = New Dictionary '重複除去のための辞書をセットする。
     
     shiftOperation_ operatorDelegate_, "OpUnionStepFirst"
     
-    OpUnion = OpUnionStepFirst(operatorDelegate_, out_item_:=out_item_)
+    OpUnion = OpUnionStepFirst(operatorDelegate_, out_Item_:=out_Item_)
     
 End Function
 
-Public Function OpUnionAll(operatorDelegate_, ByRef out_item_) As Variant
-    
-    Set Variable(0) = SourceIterator '第１イテレータ
+Public Function OpUnionAll(operatorDelegate_, ByRef out_Item_) As Variant
     
     shiftOperation_ operatorDelegate_, "OpUnionStepFirst"
     
-    OpUnionAll = OpUnionStepFirst(operatorDelegate_, out_item_:=out_item_)
+    OpUnionAll = OpUnionStepFirst(operatorDelegate_, out_Item_:=out_Item_)
     
 End Function
 
 
 '１つめのソースが終わるまでこれを経由する。
 
-Public Function OpUnionStepFirst(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpUnionStepFirst(operatorDelegate_, ByRef out_Item_) As Variant
     
     
     '列挙
     
     Dim isRetrieved_ As Boolean
     
-    isRetrieved_ = OpUnionBody(operatorDelegate_, out_item_:=out_item_)
+    isRetrieved_ = OpUnionBody(operatorDelegate_, out_Item_:=out_Item_)
     
     
     
@@ -751,19 +749,19 @@ Public Function OpUnionStepFirst(operatorDelegate_, ByRef out_item_) As Variant
     
     If Not isRetrieved_ Then
         
-        Dim nextSource_ As Object:  Set nextSource_ = Variable(1)
+        Dim nextSource_ As Object:  Set nextSource_ = Variable(0)
         
         If nextSource_ Is Nothing Then Exit Function
         
         
         '第２イテレータ
         
-        Set Variable(0) = Enumerable(nextSource_).NewEnum ' next iterator_
+        Set SourceIterator = xCom.GetEnumVariant(nextSource_) ' next iterator_
         
         shiftOperation_ operatorDelegate_, "OpUnionBody"
         
         
-        isRetrieved_ = OpUnionBody(operatorDelegate_, out_item_:=out_item_)
+        isRetrieved_ = OpUnionBody(operatorDelegate_, out_Item_:=out_Item_)
         
     End If
     
@@ -775,19 +773,15 @@ End Function
 
 'イテレーション本体
 
-Public Function OpUnionBody(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpUnionBody(operatorDelegate_, ByRef out_Item_) As Variant
     
-    Dim iterator_   As IEnumVARIANT:    Set iterator_ = Variable(0)
-    
-'    Dim nextSource_ As Object:          Set nextSource_ = Variable(1)
-    
-    Dim distincts_  As Dictionary:      Set distincts_ = Variable(2)
+    Dim distincts_  As Dictionary:      Set distincts_ = Variable(1)
     
     
     
     Dim isRetrieved_ As Boolean
     
-    Do While xCom.CallNext_EnumVariant(iterator_, out_item_:=out_item_)
+    Do While xCom.CallNext_EnumVariant(SourceIterator, out_Item_:=out_Item_)
         
         
         isRetrieved_ = distincts_ Is Nothing
@@ -795,7 +789,7 @@ Public Function OpUnionBody(operatorDelegate_, ByRef out_item_) As Variant
         If isRetrieved_ Then Exit Do
         
         
-        isRetrieved_ = Not isKeyExisted_(distincts_, out_item_)
+        isRetrieved_ = Not isKeyExisted_(distincts_, out_Item_)
         
         If isRetrieved_ Then Exit Do
         
@@ -831,18 +825,60 @@ End Function
 
 
 
-' qZip
+Public Function OpReverseFirst(operatorDelegate_, ByRef out_Item_) As Variant
+    
+    Dim c_ As New Collection
+    
+    Dim item_
+    
+    If Not xCom.CallNext_EnumVariant(SourceIterator, out_Item_:=item_) Then Exit Function
+    
+    c_.Add item_
+    
+    Do While xCom.CallNext_EnumVariant(SourceIterator, out_Item_:=item_)
+        
+        c_.Add item_, before:=1
+        
+    Loop
+    
+    Set Variable = c_
+    
+    Set SourceIterator = xCom.GetEnumVariant(c_)
+    
+    
+    shiftOperation_ operatorDelegate_, "OpNext"
+    
+    OpReverseFirst = OpNext(operatorDelegate_, out_Item_:=out_Item_)
+    
+End Function
+
+
+
+
+
+
+
+
+
+' qZip( secondEnumerableSource_[, resultSelector] )
 
 ' resultSelector
 '　first_source : variant, second_source : variant =>> result : variant
 
-Public Function OpZipFirst(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpZipFirst(operatorDelegate_, ByRef out_Item_) As Variant
+    
+    Dim secondSource_   As Object:          Set secondSource_ = Variable(1)
+    
+    Set Variable(0) = xCom.GetEnumVariant(secondSource_)
     
     
+    shiftOperation_ operatorDelegate_, "OpZip"
+    
+    OpZipFirst = OpZip(operatorDelegate_, out_Item_:=out_Item_)
     
 End Function
 
-Public Function OpZip(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpZip(operatorDelegate_, ByRef out_Item_) As Variant
     
     Dim resSelector_    As IFunc:           Set resSelector_ = Expression
     
@@ -850,33 +886,21 @@ Public Function OpZip(operatorDelegate_, ByRef out_item_) As Variant
     
     Dim secondIterator_ As IEnumVARIANT:    Set secondIterator_ = Variable(0)
     
-    Dim secondSource_   As Object:          Set secondSource_ = Variable(1)
-    
-    
-    
-    If secondIterator_ Is Nothing Then
-        
-        Set secondIterator_ = Enumerable(secondSource_).NewEnum
-        
-        Set Variable(0) = secondIterator_
-        
-    End If
-    
     
     Do
         
         Dim firstElement_
         
-        If Not xCom.CallNext_EnumVariant(firstIterator_, out_item_:=firstElement_) Then Exit Function
+        If Not xCom.CallNext_EnumVariant(firstIterator_, out_Item_:=firstElement_) Then Exit Function
         
         Dim secondElement_
         
-        If Not xCom.CallNext_EnumVariant(secondIterator_, out_item_:=secondElement_) Then Exit Function
+        If Not xCom.CallNext_EnumVariant(secondIterator_, out_Item_:=secondElement_) Then Exit Function
         
         
         If Not resSelector_ Is Nothing _
-            Then VariantCopy out_item_, resSelector_.xExec02(firstElement_, secondElement_) _
-            Else VariantCopy out_item_, resultSelectorDefaultOfZip_(firstElement_, secondElement_)
+            Then VariantCopy out_Item_, resSelector_.xExec02(firstElement_, secondElement_) _
+            Else Set out_Item_ = resultSelectorDefaultOfTwoElemnts_(firstElement_, secondElement_)
         
         
         OpZip = True
@@ -888,22 +912,6 @@ Public Function OpZip(operatorDelegate_, ByRef out_item_) As Variant
     
 End Function
 
-
-' result selector 省略時のデフォルト
-
-Private Function resultSelectorDefaultOfZip_(firstElement_, secondElement_) As Variant
-    
-    Dim c_ As New Collection
-    
-    c_.Add Grouping.AnonymousIdentify, "ay"
-    
-    c_.Add firstElement_, "first"
-    
-    c_.Add secondElement_, "second"
-    
-    Set resultSelectorDefaultOfZip_ = c_
-    
-End Function
 
 
 
@@ -919,20 +927,20 @@ End Function
 ' selector
 '　source : variant =>> conversion : variant
 
-Public Function OpLetIf(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpLetIf(operatorDelegate_, ByRef out_Item_) As Variant
     
     Dim selector_   As IFunc:   Set selector_ = Expression(1)
     
     
-    If xCom.CallNext_EnumVariant(SourceIterator, out_item_:=out_item_) Then
+    If xCom.CallNext_EnumVariant(SourceIterator, out_Item_:=out_Item_) Then
         
         If Not selector_ Is Nothing Then
             
-            VariantCopyInd out_item_, selector_.xExec01(out_item_)
+            VariantCopyInd out_Item_, selector_.xExec01(out_Item_)
             
         End If
         
-        VariantCopyInd Variable, out_item_
+        VariantCopyInd Variable, out_Item_
         
         
         shiftOperation_ operatorDelegate_, "OpLetIfNext"
@@ -944,16 +952,16 @@ Public Function OpLetIf(operatorDelegate_, ByRef out_item_) As Variant
 End Function
 
 
-Public Function OpLetIfNext(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpLetIfNext(operatorDelegate_, ByRef out_Item_) As Variant
     
     Dim comparer_   As IFunc:   Set comparer_ = Expression(0)
     Dim selector_   As IFunc:   Set selector_ = Expression(1)
     
     Dim prevElement_:           VariantCopy prevElement_, Variable
     Dim thisElement_
-    VariantCopy out_item_, Variable
+    VariantCopy out_Item_, Variable
     
-    Do While xCom.CallNext_EnumVariant(SourceIterator, out_item_:=thisElement_)
+    Do While xCom.CallNext_EnumVariant(SourceIterator, out_Item_:=thisElement_)
         
         If comparer_.xExec02(prevElement_, thisElement_) Then
             
@@ -965,7 +973,7 @@ Public Function OpLetIfNext(operatorDelegate_, ByRef out_item_) As Variant
             
             VariantCopyInd Variable, thisElement_
             
-            VariantCopyInd out_item_, thisElement_
+            VariantCopyInd out_Item_, thisElement_
             
             
             OpLetIfNext = True
@@ -988,15 +996,15 @@ End Function
 
 
 
-' qOrderByWith
+' qOrderByWith( [func[, compareFunc]] )
 
-' selector
+' func
 '　source : variant =>> key : variant
 
-' comparer
+' compareFunc
 '　pivot : variant, key : variant =>> isToPutToRightSide : boolean
 
-Public Function OpOrderByWithFirst(operatorDelegate_, ByRef out_item_) As Variant
+Public Function OpOrderByWithFirst(operatorDelegate_, ByRef out_Item_) As Variant
     
     Dim selector_   As IFunc:   Set selector_ = Expression(0)
     Dim comparer_   As IFunc:   Set comparer_ = Expression(1)
@@ -1015,11 +1023,184 @@ Public Function OpOrderByWithFirst(operatorDelegate_, ByRef out_item_) As Varian
     Variable = 0&
     
     
-    OpOrderByWithFirst = OpIteratorAry(operatorDelegate_, out_item_:=out_item_)
+    OpOrderByWithFirst = OpIteratorAry(operatorDelegate_, out_Item_:=out_Item_)
     
 End Function
 
 
+
+
+
+
+
+' qGroupJoin( [outerKeySelector][, innerKeySelector[, resultSelector]] )
+
+' outerKeySelector
+'　outerSource : variant =>> key : variant
+
+' innerKeySelector
+'　innerSource : variant =>> key : variant
+
+' resultSelector
+'　outerSource : variant, innerSourceCollection : collection =>> element : variant
+
+Public Function OpGroupJoinFirst(operatorDelegate_, ByRef out_Item_) As Variant
+    
+    Dim innerKeySelector_   As IFunc:   Set innerKeySelector_ = Expression(1)
+    
+    Dim inner_          As Enumerator:  Set inner_ = Variable(0)
+    Dim innerDict_      As Dictionary:  Set innerDict_ = inner_.ToLookupDictionary(innerKeySelector_)
+    
+    Set Variable(1) = innerDict_
+    
+    
+    OpGroupJoinFirst = OpGroupJoin(operatorDelegate_, out_Item_:=out_Item_)
+    
+    
+    shiftOperation_ operatorDelegate_, "OpGroupJoin"
+    
+End Function
+
+Public Function OpGroupJoin(operatorDelegate_, ByRef out_Item_) As Variant
+    
+    Dim outerKeySelector_   As IFunc:   Set outerKeySelector_ = Expression(0)
+    Dim resSelector_        As IFunc:   Set resSelector_ = Expression(2)
+    
+    Dim innerDict_      As Dictionary:  Set innerDict_ = Variable(1)
+    
+    
+    
+    Dim outerItem_
+    
+    Do While xCom.CallNext_EnumVariant(SourceIterator, out_Item_:=outerItem_)
+        
+        
+        '第１ソースからキーを取得
+        
+        Dim outerKey_
+        
+        If Not outerKeySelector_ Is Nothing _
+            Then VariantCopy outerKey_, Grouping.ToAyKey(outerKeySelector_.xExec01(outerItem_)) _
+            Else VariantCopy outerKey_, Grouping.ToAyKey(outerItem_)
+        
+        
+        '第２ソースからキーに対応するグループを取得
+        
+        Dim innerCollection_ As Collection
+        
+        Dim innerItem_
+        VariantCopy innerItem_, innerDict_(outerKey_)
+        
+        Dim innerGroup_ As Grouping
+        If IsEmpty(innerItem_) _
+            Then Set innerCollection_ = New Collection _
+            Else Set innerGroup_ = innerItem_: Set innerCollection_ = innerGroup_.Elements
+        
+        
+        
+        '第１ソース単一要素と第２ソースグループをセレクタを通して返す
+        
+        If Not resSelector_ Is Nothing _
+            Then VariantCopy out_Item_, resSelector_.xExec02(outerItem_, innerCollection_) _
+            Else Set out_Item_ = resultSelectorDefaultOfTwoElemnts_(outerItem_, innerCollection_)
+        
+        
+        
+        OpGroupJoin = True
+        
+        Exit Function
+        
+    Loop
+    
+End Function
+
+
+' qJoin( [outerKeySelector][, innerKeySelector[, resultSelector]] )
+
+' outerKeySelector
+'　outerSource : variant =>> key : variant
+
+' innerKeySelector
+'　innerSource : variant =>> key : variant
+
+' resultSelector
+'　outerSource : variant, innerSource : variant =>> element : variant
+
+Public Function OpInnerJoinFirst(operatorDelegate_, ByRef out_Item_) As Variant
+    
+    Dim innerKeySelector_   As IFunc:   Set innerKeySelector_ = Expression(1)
+    
+    Dim inner_          As Enumerator:  Set inner_ = Variable(0)
+    Dim innerDict_      As Dictionary:  Set innerDict_ = inner_.ToLookupDictionary(innerKeySelector_)
+    
+    Set Variable(1) = innerDict_
+    
+    
+    OpInnerJoinFirst = OpInnerJoin(operatorDelegate_, out_Item_:=out_Item_)
+    
+    
+    shiftOperation_ operatorDelegate_, "OpInnerJoin"
+    
+End Function
+
+Public Function OpInnerJoin(operatorDelegate_, ByRef out_Item_) As Variant
+    
+    Dim innerIterator_  As IEnumVARIANT:    Set innerIterator_ = Variable(2)
+    Dim outerItem_:                         VariantCopy outerItem_, Variable(3)
+    
+    Dim resSelector_    As IFunc:           Set resSelector_ = Expression(3)
+    
+    
+    '列挙再開
+    
+    If Not innerIterator_ Is Nothing Then GoTo OnInner
+    
+    
+    
+    '外側の列挙
+    
+    Dim outerSource_
+    
+    Do While OpGroupJoin(operatorDelegate_, out_Item_:=outerSource_)
+        
+        Dim outerSourceCollection_ As Collection
+        Set outerSourceCollection_ = outerSource_
+        
+        VariantCopy outerItem_, outerSourceCollection_(1)
+        
+        
+        '内側の EnumVariant を取得する。
+        
+        Dim innerCollection_ As Collection
+        Set innerCollection_ = outerSourceCollection_(2)
+        
+        Set innerIterator_ = xCom.GetEnumVariant(innerCollection_)
+        
+        
+OnInner: '内側の列挙
+        
+        Dim innerItem_
+        
+        Do While xCom.CallNext_EnumVariant(innerIterator_, out_Item_:=innerItem_)
+            
+            If Not resSelector_ Is Nothing _
+                Then VariantCopyInd out_Item_, resSelector_.xExec02(outerItem_, innerItem_) _
+                Else Set out_Item_ = resultSelectorDefaultOfTwoElemnts_(outerItem_, innerItem_)
+            
+            
+            Set Variable(2) = innerIterator_
+            VariantCopyInd Variable(3), outerItem_
+            
+            OpInnerJoin = True
+            
+            Exit Function
+            
+        Loop
+        
+    Loop
+    
+    
+End Function
 
 
 
@@ -1185,6 +1366,29 @@ Private Function createEnumVariantEnumerator_(evar_ As IEnumVARIANT) As Enumerat
     Set createEnumVariantEnumerator_ = New Enumerator
     
     createEnumVariantEnumerator_.SetSource evar_
+    
+End Function
+
+
+
+' resultSelector 省略時の２要素パックルーチンのデフォルト（匿名オブジェクトにして返す）
+
+Private Function resultSelectorDefaultOfTwoElemnts_(firstElement_, secondElement_) As Collection 'As Variant
+    
+'    resultSelectorDefaultOfTwoElemnts_ = Array(firstElement_, secondElement_)
+'
+'    Exit Function
+    
+    
+    Dim c_ As New Collection
+    
+    c_.Add firstElement_, "first"
+    
+    c_.Add secondElement_, "second"
+    
+    c_.Add Grouping.AnonymousIdentify, "ay"
+    
+    Set resultSelectorDefaultOfTwoElemnts_ = c_
     
 End Function
 

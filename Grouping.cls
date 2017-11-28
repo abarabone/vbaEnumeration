@@ -116,7 +116,7 @@ End Function
 Public Function SeriarizeIfAnonymous(value_) As String
     
     
-    If Not isAnonymousObject_(value_) Then Exit Function
+    If Not IsAnonymousObject(value_) Then Exit Function
     
     
     Dim arr_() As String
@@ -133,7 +133,7 @@ Public Function SeriarizeIfAnonymous(value_) As String
             
             If IsObject(element_) _
                 Then arr_(i) = TypeName(element_) & ":" & CStr(ObjPtr(element_)) _
-                Else arr_(i) = CStr(element_)
+                Else arr_(i) = CStr(element_) '配列の場合だめだな…
             
             i = i + 1
             
@@ -151,11 +151,11 @@ End Function
 
 ' value_ が匿名オブジェクトなら真を返す。それ以外のすべてなら偽を返す。
 
-Private Function isAnonymousObject_(value_) As Boolean
+Public Function IsAnonymousObject(value_) As Boolean
     
     On Error Resume Next
     
-    isAnonymousObject_ = (value_("ay") Is AnonymousIdentify) 'キー"ay"に ay 識別子が格納されていれば匿名オブジェクトとする。
+    IsAnonymousObject = (value_("ay") Is AnonymousIdentify) 'キー"ay"に ay 識別子が格納されていれば匿名オブジェクトとする。
     
 End Function
 

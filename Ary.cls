@@ -291,8 +291,8 @@ End Function
 ' Variant に格納された動的配列を Ary に移動する。
 '　移動元には Empty が入る。
 
-'Public Function MoveFrom(ByRef ref_array_) As Ary '調整中
-Private Function MoveFrom(ByRef ref_array_) As Ary
+Public Function MoveFrom(ByRef ref_array_) As Ary '調整中
+'Private Function MoveFrom(ByRef ref_array_) As Ary
     Set MoveFrom = Me
     
     Free
@@ -303,6 +303,7 @@ Private Function MoveFrom(ByRef ref_array_) As Ary
     MoveMemory arr_, ref_array_, cSizeOfVariant
     
     If arr_.varType And cVarRef Then Exit Function '引数の元が Variant 以外で参照になっている場合など　エラー処理すべし
+    '他にも、静的配列ならはじく、配列変数（4bytes）を渡されたか、など必要かも
     
     arr_.serialLength = calcurateSerialLength_(Dimension)
     
@@ -480,9 +481,9 @@ End Property
 
 '次元を無視した通しインデックスを指定して要素を取得する。取得できた場合は真、できなかった場合は偽を返す。
 
-Public Function Acquire(serialIndex_&, ByRef out_item_) As Boolean
+Public Function Acquire(serialIndex_&, ByRef out_Item_) As Boolean
     
-    If serialIndex_ >= Count Then out_item_ = Empty: Exit Function
+    If serialIndex_ >= Count Then out_Item_ = Empty: Exit Function
     
     
     '配列をロックし、要素のアドレスを取得する。
@@ -500,7 +501,7 @@ Public Function Acquire(serialIndex_&, ByRef out_item_) As Boolean
     
     v_.pEntity0 = pvData_ + serialIndex_ * SafeArrayGetElemsize(ByVal arr_.pEntity0)
     
-    VariantCopyInd out_item_, v_
+    VariantCopyInd out_Item_, v_
     
     
     'ロックを解除する。

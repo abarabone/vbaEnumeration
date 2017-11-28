@@ -1452,11 +1452,11 @@ Private Function release_EnumVariant_(ByRef evar_ As EnumVariantStruct) As Long
 End Function
 
 
-Private Function next_EnumVariant_(ByRef evar_ As EnumVariantStruct, ByVal requestLength_&, ByRef out_item_, ByVal pCFetch_ As LongPtr) As Long
+Private Function next_EnumVariant_(ByRef evar_ As EnumVariantStruct, ByVal requestLength_&, ByRef out_Item_, ByVal pCFetch_ As LongPtr) As Long
     
     ' out_item_ は empty なので、オペレータ中での使用は VariantCopy() でよい
     
-    next_EnumVariant_ = 1 + evar_.OperatorFunc.xExec02(evar_.OperatorFunc, out_item_)
+    next_EnumVariant_ = 1 + evar_.OperatorFunc.xExec02(evar_.OperatorFunc, out_Item_)
     
 ''    Debug.Print "next "; VarPtr(evar_); evar_.RefCount
 End Function
@@ -1515,7 +1515,7 @@ End Function
 
 '列挙途中なら真を返す。列挙が終了していれば偽を返す。
 
-Public Function CallNext_EnumVariant(src_ As IEnumVARIANT, ByRef out_item_) As Boolean
+Public Function CallNext_EnumVariant(src_ As IEnumVARIANT, ByRef out_Item_) As Boolean
     
     'Private Function IEnumVariant::Next( ByVal requestLength_&, ByRef ref_item_, ByVal pCFetch_ as LongPtr ) As Long
     
@@ -1524,7 +1524,7 @@ Public Function CallNext_EnumVariant(src_ As IEnumVARIANT, ByRef out_item_) As B
     Static pArgs_(3 - 1) As LongPtr
     If types_(0) = 0 Then setArgReferances_ types_, pArgs_, pItem_
     
-    pItem_ = VarPtr(out_item_)
+    pItem_ = VarPtr(out_Item_)
     
     Dim res_&, result_
     

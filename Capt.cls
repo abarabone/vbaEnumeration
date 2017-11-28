@@ -1293,6 +1293,7 @@ End Function
 '　※ Array() も考えられるが、それはそのまま書いてもらえばいい
 
 '匿名オブジェクトは、キー「"ay"」／バリュー「 Enumerable.AnonymousIdentify への参照」のメンバを持ち、通常の Collection/Dictionary と区別する。
+'また、ay キーは最後のメンバとする（要素２つなら、３つめの要素が ay キー）。
 
 'タグ文字／パラメータ区切り文字は、ＶＢＡ構文で使用されない文字でなければならない。
 '　複雑な検索はしていないため。文脈で意味を考える等はしていない。
@@ -1351,7 +1352,7 @@ End Function
 
 Private Function makeInstantiateFunctionString_(ByRef ref_funcName_$, propertyList_$, typeName_$, separator_$, needSwap_ As Boolean) As String
     
-    Dim props_$(): props_ = Split("ay=grouping.anonymousidentify" & separator_ & propertyList_, separator_)
+    Dim props_$(): props_ = Split(propertyList_ & separator_ & "ay=grouping.anonymousidentify", separator_)
     
     
     Dim lines_  As New Collection   '関数内の文
