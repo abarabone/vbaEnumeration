@@ -76,6 +76,9 @@ selector 等には、文字列のコード式／IFunc を実装するもの／�
 * qSkip( count as long )
 * qTake( count as long )
 * qSpan( count as long )
+* qOrderByWith( Optional func, Optional comparer ) ... comparer で比較関数を指定できる（真を返す場合後に列挙される、等値の時何も
+* qGroupJoin( Optional outerKeySelector, Optional innerKeySelector, Optional resultSelector )
+* qJoin( Optional outerKeySelector, Optional innerKeySelector, Optional resultSelector )
 * Sum
 * Count
 * ForEach( expression )
@@ -83,7 +86,7 @@ selector 等には、文字列のコード式／IFunc を実装するもの／�
 * ToCollection
 * ToDictionay( Optional keySelector, Optional elementSelector )
 * ToLookUp( Optional keySelector, Optional elementSelector )
-* qOrderByWith( Optional func, Optional comparer ) ... comparer で比較関数を指定できる（真を返す場合後に列挙される、等値の時何も返さないようにすれば安定ソートになる、comparer 省略時は昇順）
+返さないようにすれば安定ソートになる、comparer 省略時は昇順）
 * ToArySorted( Optional comparer ) ... ソート済配列を生成する
 * その他順次追加
 
@@ -118,6 +121,7 @@ selector 等には、文字列のコード式／IFunc を実装するもの／�
 * Ary オブジェクト
 * 配列（ Enumerable.FromArray() ）　※コピー渡しになってしまう
 * 現在未実装ですが、レコードセットなども対応予定
+* 現在、オペレータからの戻りに配列を流すとうまく動かないケースもあるかも
 
 ## モジュール一覧
 
